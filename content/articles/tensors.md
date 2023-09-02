@@ -4,6 +4,8 @@ date: 2023-08-27T14:53:04-07:00
 math: true
 draft: true
 ---
+Definitions of tensor operations and derivations of their properties.
+
 # Coordinates
 
 Tensors provide access to items of data identified by a set of coordinates. Each coordinate specifies a value on an axis. Axes are usually assigned positions, such as $[X, Y, Z]$. Then the values in the tuple $[2, 5, 1]$ can be matched to the axes in the same positions, so $2$ is the coordinate on the $X$ axis, $5$ is the coordinate on the $Y$ axis, and $1$ is the coordinate on the $Z$ axis.
@@ -40,9 +42,11 @@ To write that the tensor $T$ has the coordinate system $\\{H,W,C\\}$ we write $\
 
 We can specify axes positionally by listing them: $$\mathtt{Tensor\ }T[C,H,W].$$ To indicate skipped positions (for broadcast) we use a $1$ instead of an axis: $$\mathtt{Tensor\ }T[1,C,H,W].$$
 
-## Disjoint Coordinate Systems
+## Disjoint Coordinate Systems and Coordinates
 
-If we write that tensor $T$ has coordinate system $\mathtt{Tensor\ }T[A,B,C]$ we mean that $A, B,$ and $C$ are disjoint coordinate systems and $T$'s coordinate system is $A\cup B\cup C$.
+If we write that tensor $T$ has coordinate system $\mathtt{Tensor\ }T[A|B|C]$ we mean that $A, B,$ and $C$ are disjoint coordinate systems and $T$'s coordinate system is $A\cup B\cup C$.
+
+Cooridinate sets are called disjoint when their axes are disjoint.
 
 ## Projections
 
@@ -56,26 +60,47 @@ $$\\{h:3,w:1\\} = \\{H,W\\}({h:3, w:1, c:2}).$$
 We can now define tensor addition. Given $\mathtt{Tensor\ }T[A]$ and $\mathtt{Tensor\ }U[B]$, the tensor sum will be $\mathtt{Tensor\ }V[A,B]$, where for all coordinates $ab \in A,B$,
 $$V[ab] = T[A(ab)] + U[B(ab)].$$
 
-Equivalently, given disjoint coordinate systems $A, B,$ and $C$, and $\mathtt{Tensor\ }T[A,B]$ and $\mathtt{Tensor }U[A,C]$, $$\mathtt{Tensor\ }V[A,B,C] = T[A,B] + U[A,C]$$ where
-$$V[a,b,c] = T[a,b]+ U[a,c].$$
+Equivalently, given disjoint coordinate systems $A, B,$ and $C$, and $\mathtt{Tensor\ }T[A,B]$ and $\mathtt{Tensor }U[A,C]$, $$\mathtt{Tensor\ }V[A|B|C] = T[A|B] + U[A|C]$$ where
+$$V[a|b|c] = T[a|b]+ U[a|c].$$
 
 The sum has all the axes of the two tensors being summed. The value at each coordinate in the sum is the sum of the values of the two tensors at the coordinate projected into their coordinate system.
 
 How does this compare with positional tensor addition? Transpositions may be required to make axes positions line up correctly, and axes of length 1 may need to be added to one or both tensors to indicate broadcasts on the appropriate axes.
 
+### Derivative
+
+For each element in $V$,
+$$dV[a|b|c] = dT[a|b] + dU[a|c].$$
+
+Then
+$$dV = dT + dU.$$
+
 ## Reduction
 
-If $A$ and $B$ are disjoint coordinate systems and $\mathtt{Tensor\ }T[A,B]$ is a tensor, the reduction of T on $A$ is $\mathtt{Tensor\ }U[B]$ where for each $b\in B$,
-$$U[b]=\sum_{a\in A} T[a,b].$$
+If $A$ and $B$ are disjoint coordinate systems and $\mathtt{Tensor\ }T[A|B]$ is a tensor, the reduction of T on $A$ is $\mathtt{Tensor\ }U[B]$ where for each $b\in B$,
+$$U[b]=\sum_{a\in A} T[a|b].$$
+
+### Derivative
+
+$$dU[b] = \sum_{a\in A} dT[a|b].$$
+$$dU = \sum_{a\in A} dT.$$
 
 ## Tensor Multiplication
 
-If $A, B,$ and $C$ are disjoint coordinate systems, the product of $T[A,B]$ and $U[B,C]$ is $V[A,C]$ where for all $a\in A$ and $b\in B$,
-$$V[a,c] = \sum_{b\in B} A[a,b]B[b,c].$$
+If $A, B,$ and $C$ are disjoint coordinate systems, the product of $T[A|B]$ and $U[B|C]$ is $V[A|C]$ where for all $a\in A$ and $b\in B$,
+$$V[a|c] = \sum_{b\in B} A[a|b]B[b|c].$$
+
+### Derivative
+$$dV[a|c] = \sum_{b\in B} \left(A[a|b]dB[b|c] + dA[a|b]B[b|c]\right).$$
+$$dV = AdB + BdA.$$
+
+## Batched multiplication
 
 If the shared coordinates $B$ are split into two groups, $B_0$ and $B_1$, we can define a batched multiplication:
-$$V[B_0,A,C] = T[B_0, A, B_1] U[B_0, B1, C],$$
-$$V[b_0, a,c] = \sum_{b_1\in B_1} A[b_0, a,b_1]B[b_0, b_1,c].$$
+$$V[B_0|A|C] = T[B_0| A| B_1] U[B_0| B1| C],$$
+$$V[b_0| a|c] = \sum_{b_1\in B_1} A[b_0| a|b_1]B[b_0| b_1|c].$$
 
-# Derivatives
+### Derivative
 
+$$V[b_0| a|c] = \sum_{b_1\in B_1} \left(A[b_0| a|b_1]dB[b_0| b_1|c]+dA[b_0| a|b_1]B[b_0| b_1|c]\right).$$
+$$dV[B_0|A|C] = A[B_0|A|B_1]dB[B_0|B_1|C] + dA[B_0|A|B_1]B[B_0|B_1|C].$$
