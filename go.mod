@@ -1,4 +1,4 @@
-module github.com/diyessi/testsite
+module github.com/diyessi/explications
 
 go 1.21
 

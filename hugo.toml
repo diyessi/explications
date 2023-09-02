@@ -1,4 +1,4 @@
-baseURL = 'https://diyessi.github.io/testsite/'
+baseURL = 'https://diyessi.github.io/explications/'
 languageCode = 'en-us'
-title = 'Notes'
+title = 'Explications'
 theme = ["github.com/theNewDynamic/gohugo-theme-ananke"]
