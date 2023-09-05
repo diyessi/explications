@@ -4,49 +4,105 @@ date: 2023-08-27T14:53:04-07:00
 math: true
 draft: true
 ---
-Definitions of tensor operations and derivations of their properties.
+# Tensors
 
-# Coordinates
+The word *tensor* is used in a number of related but different ways. In mathematics, a tensor is a multi-linear relation between vector spaces. Given particular bases for the vector spaces, a tensor can be represented by a multi-dimensional array. In machine learning, *tensor* became a synonym for data that can be represented as a *multi-dimensonal array,* for multi-dimensional arrays in general, and for particular implementations of multi-dimensional arrays. Here we will treat a tensor as a function from *coordinate system* to an *element type.* 
 
-Tensors provide access to items of data identified by a set of coordinates. Each coordinate specifies a value on an axis. Axes are usually assigned positions, such as $[X, Y, Z]$. Then the values in the tuple $[2, 5, 1]$ can be matched to the axes in the same positions, so $2$ is the coordinate on the $X$ axis, $5$ is the coordinate on the $Y$ axis, and $1$ is the coordinate on the $Z$ axis.
+Recall that a function from $A$ (its domain) to $B$ (its range) pairs every element of $A$ with an element of $B$. If two descriptions of functions result in the same pairings, the two descriptions describe the same function.
 
-For tensor operation semantics, it is the axes, not the positions, that are important. This is not to say that positional notation is not important for implementing tensors and their operations, and it is considerably more concise for using tensors. But for defining the operations and their properties it is much simpler to skip positions and work with axes directly.
+## Coordinate Systems
 
-## Axis
+The ambiguity of the word *tensor* is nothing compared to the abiguity of words like *axis,* *dimension* and *coordinate.* Here we will introduce *typed axes* to simplify the definition of tensor operations and their properties.
 
-We define an *axis* by naming a set of values used for coordinates. For example, $\mathtt{Axis\ } X[\mathbb{R}]$ is named $X$ and its coordinates are real numbers. A coordinate on $X$ is written $X:3.$ Axes are nominal, which means that each axis definition is a new axis even if the set of values is the same as another axis. However, variables with different names may refer to the same axis.
+Here, an *axis* is a *nominal type* for a set of values. By *nominal type* we mean that every axis definition is a new axis, even if the set of values is the same as another axis. We must be careful to distinguish an axis from an axis variable, since axis variables with the same name may refer to the same axis.
 
-## Coordinate
-
-Axis coordinates for tensors are usually bounded non-negative integers, such as $\\{0,1,2\\}.$ It is convenient to borrow the following definitions from mathematical logic:
+The set of values for an axis can be quite varied. We'll start by borrowing some convenient conventions from mathematical logic: A non-negative integer names the set of non-negative integers below it.
 $$0 \equiv \\{\\},$$
-$$1 \equiv \\{0\\},$$
-$$2 \equiv \\{0, 1\\},$$
+$$1 \equiv \\{0\\} = 0 \cup \\{0\\},$$
+$$2 \equiv \\{0, 1\\} = 1 \cup \\{1\\},$$
+$$3 \equiv \\{0, 1, 2\\} = 2 \cup \\{2\\},$$
 $$\vdots$$
-Then $\mathtt{Axis\ }H[128]$ would have coordinates $\\{0, 1, 2, \ldots, 127\\}.$
+$$n+1 \equiv \\{0, 1, \ldots, n\\} = n \cup \\{n\\}.$$
+These are called *the von Neumann integers.*
 
-## Coordinate System
+We can define an axis as $\mathtt{axis\ }\mathtt{Name}[\mathtt{values}]$. For example, $\mathtt{axis\ }H[128]$ and $\mathtt{axis\ }W[128]$ defines two separate axes, $H$ and $W$, each with values from $0$ through $127.$ A *coordinate* pairs an axis with an axis value, for example, $H:4$ or $W:45.$
 
-A *coordinate system* is a set of axes and a coordinate in a coordinate system is a set of coordinates with exactly one coordinate for each axis in the coordinate system. The coordinate
-$$\\{H:3,W:4,C:2\\}$$
-is in the coordinate system
-$$\\{H[128], W[128], C[3]\\}.$$
+A *coordinate system* is specified by a set of axes. For example, $\\{H,W\\}$ specifies a coordinate system. Coordinate systems contain all sets of coordinates that contain exactly one of each axis in the coordinate system. For $\\\{H,W\\},$
+$$\\{H:0,W:0\\},$$
+$$\\{H:0:W:1\\},$$
+$$\\{H:0:W:2\\},$$
+$$\vdots$$
+$$\\{H:127,W:127\\}.$$
+Since a coordinate system is specified by a set of axes, the order doesn't matter: $\\{H,W\\}$ and $\\{W,H\\}$ specify the same coordinate system. Likewise, $\\{H:3,W:6\\}$ and $\\{W:6,H:3\\}$ are the same coordinate.
 
-## Nested Coordinate Systems
+We can specify a tensor with its element type and coordinate system:
+$$\mathtt{tensor\ float \ }T[\\{H,W\\}]$$
+and an element as:
+$$T[\\{W:4, H:6\\}].$$
 
-A coordinate system is a set of values, so a coordinate system can be used as the set of values for a new axis. For example, $\mathtt{axis }I[\\{H,W,C\\}]$ has coordinates such as $I:\\{H:2, W:4, C:0\\}.$
+This notation can get verbose, so there is also a positional variant:
+$$\mathtt{tensor\ float \ }T[H,W] \equiv T[\\{H,W\\}]$$
+and defines
+$$T[4, 6] \equiv T[\\{W:4, H:6\\}].$$
+All axes must be unique.
 
-## Tensors
+## Broadcasting
 
-To write that the tensor $T$ has the coordinate system $\\{H,W,C\\}$ we write $\mathtt{Tensor\ }T[\\{H,W,C\\}]$. Likewise, $T[\\{H:3,W:1,C:0\\}]$ is the element of $T$ at coordinate $\\{H:3,W:1,C:0\\}.$
+A tensor's data can be broadcast into a tensor with an expanded coordinate system by ignoring the axes that are only in the expanded coordinate system. If coordinate system $C, D$ are disjoint, we project coordinates from $C\cup D$ into $C:$
+$$\begin{aligned}
+\mathtt{tensor\ }U[C\cup D] &= \mathtt{Broadcast(D)}(T[C])\\\\
+U[c\cup d] &=T[c].\\\\
+\end{aligned}$$
 
-We can specify axes positionally by listing them: $$\mathtt{Tensor\ }T[C,H,W].$$ To indicate skipped positions (for broadcast) we use a $1$ instead of an axis: $$\mathtt{Tensor\ }T[1,C,H,W].$$
+If the coordinate system of the actual data is $\\{\\}$ (scalar) the coordinate system can be broadcast to $\\{H,W\\}$ so it can be used in settings where there are two axes, $H$ and $W$.
 
-## Disjoint Coordinate Systems and Coordinates
+## Flattening and Inflating
 
-If we write that tensor $T$ has coordinate system $\mathtt{Tensor\ }T[A|B|C]$ we mean that $A, B,$ and $C$ are disjoint coordinate systems and $T$'s coordinate system is $A\cup B\cup C$.
+A coordinate system may be *flattened* by treating its coordinates as the values of a new axis. For example, with the coordinate system $\\{N,H,W,C\\}$, we can flatten the subcoordinate system $\\{H,W,C\\}$ as $\texttt{axis\  }I[\\{H,W,C\\}],$ creating a new axis $I$. Alternatively, we can leave the axis unnamed, as $\texttt{flatten}(\\{H,W,C\\}),$ which is an unnamed new axis that is the same axis as any other use of $\texttt{flatten}(\\{H,W,C\\}).$
 
-Cooridinate sets are called disjoint when their axes are disjoint.
+$$\begin{aligned}
+U[I,J]&=\texttt{flatten}\\{I,J\\}T[I|J]\\\\
+U[i,j]&=T[i|j].\\\\
+\\end{aligned}$$
+
+For example,
+$$\begin{aligned}
+U[N,\\{H,W,C\\}]&=\texttt{flatten}\\{N,\\{H,W,C\\}\\}(T[N,H,W,C])\\\\
+U[n,\\{h,w,c\\}]&=T[n,h,w,c].\\\\
+\end{aligned}$$
+
+## Tensor Addition
+
+NumPy positional tensor addition has three variations:
+ 1. $$\begin{aligned} V[I] &= T[I] + U[I]\\\\
+      V[i] &= T[i] + U[i],\\\\
+    \end{aligned}\text{   (elementwise)}$$
+ 2. $$\begin{aligned} V[I] &= T[1] + U[I]\\\\
+      V[i] &= T[0] + U[i],\\\\
+     \end{aligned}\text{  (broadcast single axis)}$$
+ 3. $$\begin{aligned}V[I,J] &= T[1,I] + U[J,1]\\\\ 
+     V[i,j] &= T[1,0] + U[j,0],\\\\
+     \end{aligned}\text{  (broadcast both axes)}$$
+where $i\in I$ and $j\in J$.
+
+With axis types, we can define the three types of addition for arbitrary axes. Let $I, J,$ and $K$ be three arbitrary disjoint coordinate sets, any of which may be empty. Define
+$$\begin{aligned}
+V[I\cup J \cup K] &= T[I \cup J]+U[J\cup K]\\\\
+V[i \cup j \cup k] &= T[i \cup j]+U[j\cup k]\\\\
+\end{aligned}
+$$
+where $i\cup j \cup k\in I\cup J\cup K$.
+
+Positional case 1 applies when $I$ and $K$ are empty, case 2 when $I$ and $J$ are empty and case 3 when $J$ is empty.
+
+To simplify the notation, we let $I|J$ be a disjoint union of coordinate spaces, and $i|j$ be the corresponding separation of their coordinates. Then we can rewrite addition more concisely as:
+$$\begin{aligned}
+V[I|J|K] &= T[I|J]+U[J|K]\\\\
+V[i|j|k] &= T[i|j]+U[j|k].\\\\
+\end{aligned}
+$$
+
+
 
 ## Projections
 
