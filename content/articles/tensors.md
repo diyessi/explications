@@ -171,40 +171,210 @@ This is loosely based on [Andrea Griewank and Andrea Walther's *Evaluating Deriv
 
 Let
 $$z=ax^2+bxy+cy^2.$$
-In a typical calculus problem we would want $\frac{\partial z}{\partial x}$ and $\frac{\partial z}{\partial y},$ but in deep learning we would probably be trying to optimize by changing $a, b$ and $c$, so we would want $\frac{\partial z}{\partial a},$ $\frac{\partial z}{\partial b},$ and $\frac{\partial z}{\partial c}.$
+In a typical calculus problem we would want $\frac{\partial z}{\partial x}$ and $\frac{\partial z}{\partial y},$ but in deep learning we would be trying to optimize by adjusting $a, b$ and $c$, so we would want $\frac{\partial z}{\partial a},$ $\frac{\partial z}{\partial b},$ and $\frac{\partial z}{\partial c}.$
 
-One way to calculate $z$ with some specified values for $a, b, c, x,$ and $y$ would be:
+## The Computation
+
+To actually compute $z$ given vaues for $a,b,c,x,$ and $y,$ we will need to break the expression down into a series of primitive operations. The network has three primitive operations, scalar addition, multiplication, and squaring. We will assume that the parameters $a,b,$ and $c$ and the arguments $x$ and $y$ must be loaded before being used in computation, and the the result must be saved.
+
 ```python
-a = 3
-b = 1
-c = -2
-x = 4
-y = -1
-t0 = x * x = 16
-t1 = a * t0 = 48
-t2 = x * y = -4
-t3 = b * t2 = -4
-t4 = y * y = 1
-t5 = c * t4 = -2
-t6 = t1 + t3 = 44
-z = t6 + t5 = 42
+t0 = parameter.a
+t1 = arg.x
+t2 = t1^2
+t3 = t0 * t2
+t4 = parameter.b
+t5 = t4 * t1
+t6 = arg.y
+t7 = t5 * t6
+t8 = t3 + t7
+t9 = parameter.c
+t10 = t6^2
+t11 = t9 * t10
+t12 = t8 + t11
+result.z = t12
 ```
-To each line we add non-zero derivatives:
+
+## Differentials of Primitives
+
+For addition,
+$$\begin{align*}
+z&=x+y\\\\
+dz&=dx+dy\\\\
+dz&=\left[\begin{array}{cc}
+1&1
+\end{array}\right]
+\left[\begin{array}{c}
+dx\\\\
+dy
+\end{array}\right]
+\end{align*}$$
+
+For multiplication,
+$$\begin{align*}
+z&=xy\\\\
+dz&=x\\,dy + y\\,dx\\\\
+dz&=\left[\begin{array}{cc}
+y&x
+\end{array}\right]
+\left[\begin{array}{c}
+dx\\\\
+dy
+\end{array}\right]
+\end{align*}$$
+
+And for squaring,
+$$\begin{align*}
+z&=x^2\\\\
+dz&=2x\\\\
+dz&=\left[\begin{array}{c}
+2x\\,dx
+\end{array}\right]
+\left[\begin{array}{c}
+dx
+\end{array}\right]
+\end{align*}$$
+
+## Computing the Derivative
+
+We will start with the forward computation of the derivative. We want to compute $\frac{\partial z}{\partial a},$ $\frac{\partial z}{\partial b},$ and $\frac{\partial z}{\partial c}.$ We use vectors of the form
+$$\left[\begin{array}{ccc}\frac{\partial}{\partial a}&\frac{\partial}{\partial b}&\frac{\partial}{\partial c}\end{array}\right].$$
+After we compute `ti` we compute `Di` which is the derivative matrix, followed by `dti` which is the value of the differential vector.  while for `arg` operations it is 0. For addition, subtraction and squaring it is result of the above differential computations.
+
 ```python
-a = 3, da/da = 1
-b = 1, db/db = 1
-c = -2, dc/dc = 1
-x = 4
-y = -1
-t0 = x * x = 16
-t1 = a * t0 = 48, dt1/da = t0 = 16
-t2 = x * y = -4
-t3 = b * t2 = -4, dt3/db = t2 = -4
-t4 = y * y = 1
-t5 = c * t4 = -2, dt5/dc = t4 = 1
-t6 = t1 + t3 = 44 dt6/da = dt1/da  = 16, dt6/db = dt3/db = -4
-z = t6 + t5 = 42 dz/da = dt6/da = 16, dz/db = dt6/db = -4, dz/dc = dt5/dc = 1
+t0 = parameter.a
+dt0 = [1, 0, 0]
 ```
-This is called forward differentiation.
+Since $\frac{\partial a}{\partial a} = 1$ and $\frac{\partial a}{\partial b}, \frac{\partial a}{\partial c} = 0$ 
+
+```python
+t1 = arg.x
+dt1 = [0, 0, 0]
+```
+Since $\frac{\partial x}{\partial a} = 0.$
+
+```python
+t2 = t1^2
+D2 = [2 * t1]
+dt2 = D2[dt1]
+```
+Here we encounter the first derivative matrix, this time for the unary function $x^2.$
+
+```python
+t3 = t0 * t2
+D3 = [t2, t0]
+dt3 = D3[dt0 
+         dt2]
+```
+Multiplication is binary, so we have contributions from both arguments.
+
+```python
+t4 = parameter.b
+dt4 = [0, 1, 0]
+
+t5 = t4 * t1
+D5 = [t1, t4]
+dt5 = D5[dt4
+         dt1]
+
+t6 = arg.y
+dt6 = [0, 0, 0]
+
+t7 = t5 * t6
+D7 = [t6, t5]
+dt7 = D7[dt5
+         dt6]
+
+t8 = t3 + t7
+D8 = [1, 1]
+dt8 = D8[dt3
+         dt7]
+
+t9 = parameter.c
+dt9 = [0, 0, 1]
+
+t10 = t6^2
+D10 = [2 * t6]
+dt10 = D10[dt6]
+
+t11 = t9 * t10
+D11 = [t10, t9]
+dt11 = D11[dt9,
+           dt10]
+
+t12 = t8 + t11
+D12 = [1, 1]
+dt12 = D12[dt8
+           dt11]
+
+result.z = t12
+result.dz = dt12
+```
+
+Now we'll evaluate symbolically:
+```python
+t0 = parameter.a = a
+dt0 = [1, 0, 0]
+
+t1 = arg.x = x
+dt1 = [0, 0, 0]
+
+t2 = t1^2 = x^2
+D2 = [2 * t1] = 2x
+dt2 = D2[dt1] = [0, 0, 0]
+
+t3 = t0 * t2 = ax^2
+D3 = [t2, t0] = [x^2, a]
+dt3 = D3[dt0  = [x^2, a][1, 0, 0
+         dt2]            0, 0, 0]
+              = [x^2, 0, 0]
+
+t4 = parameter.b = b
+dt4 = [0, 1, 0]
+
+t5 = t4 * t1 = bx
+D5 = [t1, t4] = [x, b]
+dt5 = D5[dt4  = [x, b][0, 1, 0
+         dt1]          0, 0, 0]
+              = [0, x, 0]
+
+t6 = arg.y = y
+dt6 = [0, 0, 0]
+
+t7 = t5 * t6 = bxy
+D7 = [t6, t5] = [y, bx]
+dt7 = D7[dt5  = [y, bx][0, x, 0
+         dt6]           0, 0, 0]
+              = [0, xy, 0]
+
+t8 = t3 + t7 = ax^2 + bxy
+D8 = [1, 1]
+dt8 = D8[dt3  = [1, 1][x^2, 0,  0
+         dt7]          0,   xy, 0]
+              = [x^2, xy, 0]
+
+t9 = parameter.c = c
+dt9 = [0, 0, 1]
+
+t10 = t6^2 = y^2
+D10 = [2 * t6] = [2y]
+dt10 = D10[dt6] = [2y][0, 0, 0]
+                = [0, 0, 0]
+
+t11 = t9 * t10 = cy^2
+D11 = [t10, t9] = [y^2, c]
+dt11 = D11[dt9,  = [y^2, c][0, 0, 1
+           dt10]            0, 0, 0]
+                 = [0, 0, y^2]
+
+t12 = t8 + t11 = ax^2 + bxy + cy^2
+D12 = [1, 1]
+dt12 = D12[dt8   = [1, 1][x^2, xy, 0
+           dt11]            0,  0, y^2]
+                 = [x^2, xy, y^2]
+
+result.z = t12
+result.dz = dt12 = [x^2, xy, y^2]
+```
+
 
 # Deep Learning Operations
