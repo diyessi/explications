@@ -1,12 +1,9 @@
 ---
-title: "Automatic Differentiation for Deep Learning"
-date: 2023-08-27T14:53:04-07:00
+title: "Working"
+date: 2023-09-19T07:31:11-07:00
 math: true
 draft: true
 ---
-# Introduction
-
-When most people hear the term "Automatic differentiation," they think it is the same process learned in calculus only performed by a program. Others think it is a numeric approximation to the actual derivative. In reality, it is a clever transformation that extends a program that computes a function into one that also computes its derivatives with respect to specified parameters. Here we will provide a brief review of calculus followed by an explanation of automatic differentiation and some applications to deep learning computations.
 
 # A Short Vector Calculus
 
@@ -375,6 +372,7 @@ dt12 = D12[dt8   = [1, 1][x^2, xy, 0
 result.z = t12
 result.dz = dt12 = [x^2, xy, y^2]
 ```
+
 
 
 # Deep Learning Operations
