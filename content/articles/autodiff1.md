@@ -7,7 +7,7 @@ math: true
 
 When most people hear the term "Automatic differentiation," they think it is the same process learned in calculus only performed by a program. Others think it is a numeric approximation to the actual derivative. In reality, it is a clever transformation that extends a program that computes a function into one that also computes its derivatives with respect to specified parameters. Here we will provide a brief review of calculus followed by an explanation of automatic differentiation and some applications to deep learning computations.
 
-# Derivatives by backprop
+# Computing derivatives
 
 We'll start with finding a simple derivative three ways:
  - Symbolically, the way you learn in calculus,
@@ -22,7 +22,8 @@ This is a function of $x$ with parameters $a$ and $b.$ we want to find $\frac{df
 
 Symbolically,
 $$\begin{align*}
-df&=(x+a)\\,d(x+b) + (x+b)\\,d(x+a)\\\\
+df&=d((x+a)(x+a))\\\\
+&=(x+a)\\,d(x+b) + (x+b)\\,d(x+a)\\\\
 &=(x+a)\\,db + (x+b)\\,da.
 \end{align*}$$
 
@@ -38,29 +39,29 @@ t4 = t0 + t3    # x + b
 t5 = t2 * t4    # (x + a) * (x + b)
 y = t5
 ```
-After each step, we compute 
-$$\left[\frac{dt_i}{da}, \frac{dt_i}{db}\right]$$
-from first principles or using the chain rule, as appropriate:
+After each step, we also compute the derivative of the intermediate result with respect to $a$ and $b$ as relevant. We use `dt2_da` for $\frac{dt_2}{da}.$ To save space, for values such as $\frac{dt_0}{da}$ that are $0$ we omit `dt0_da` assuming it is $0$ in any use.
 
 ```python
 t0 = load('x')  # x
-dt0 = [0, 0]    
 t1 = load('a')  # a
-dt1 = [1, 0]
+dt1_da = 1
 t2 = t0 + t1    # x + a
-dt2 = [1, 0]
+dt2_da = 1
 t3 = load('b')  # b
-dt3 = [0, 1]
+dt3_db = 1
 t4 = t0 + t3    # x + b
-dt4 = [0, 1]
+dt4_db = 1
 t5 = t2 * t4    # (x + a) * (x + b)
-dt5 = t2 * dt4 + t4 * dt2
-    = [t4, t2]  # [x + b, x + a]
+dt5_da = t2 * dt4_da + t4 * dt2_da
+       = t2  # x + b
+dt5_db = t2 * dt4_db + t4 * dt2_db
+       = t4  # x + a
 y = t5
-dy = [t4, t2]
+dy_da = t4
+dy_db = t2
 ```
 So 
-$$\left[\begin{array}{cc}\frac{dy}{da} &\frac{dy}{db}\end{array}\right]=\left[\begin{array}{cc}(x+b)&(x+a)\end{array}\right].$$
+$\frac{dy}{da} = x + b$ and $\frac{dy}{db} = x + a.$
 
 ## Backward propagation
 
@@ -107,8 +108,68 @@ So $\frac{dy}{da}=x+b$ and $\frac{dy}{db}=x+a.$
 
 If you think it is a bit mysterious how backwards propagation ends up with the correct values, your intuition is correct. If is often explained as just being the chain rule, along with some vigorous hand waving. Of course the chain rule is involved, but it is more interesting than just the chain rule. A future page will explain how it works.
 
-# Getting a symbolic representation of a computation
-
 # Extending to tensors
 
-# Deep learning primitives and derivatives
+For a scalar $t$, we treat $dt$ as a scalar. For a tensor $t$ we treat $dt$ as a tensor with the same shape. But first we need to determine how to compute the derivative of the basic tensor operations.
+
+## Vector addition
+
+For
+$$Y[I] = U[I] + V[I]$$
+defined by
+$$Y[i] = U[i] + V[i],$$
+we see that
+$$dY[i] = dU[i] + dV[i],$$
+so
+$$dY[I] = dU[I] + dV[I].$$
+
+### Batched vector addition
+
+When adding a bias, the bias vector is broadcast.
+
+For
+$$Y[I,N] = U[I,N] + B[I]$$
+defined by
+$$Y[i,n] = U[i,n] + B[i],$$
+we see that
+$$dY[i,n] = dU[i,n] + dB[i],$$
+so
+$$dY[I,N] = dU[I,N] + dB[I].$$
+
+We will see that this requires careful treatment with back propagation.
+
+## Matrix multiplication
+
+### By a vector
+
+The matrix multiplication
+$$Y[I] = W[I,J]V[J],$$
+is defined as
+$$Y[i] = \sum_{j<J} W[i,j]V[j].$$
+
+Then
+$$\begin{aligned}
+dY[i] &= \sum_{j<J}\left(W[i,j]\\,dV[j]+dW[i,j]V[j]\right)\\\\
+&=\sum_{j<J}W[i,j]\\,dV[j] + \sum_{j<J}dW[i,j]V[j].
+\end{aligned}$$
+Using the definition of matrix multiplication,
+$$dY[I] = W[I,J]\\,dV[J]+dW[I,J]V[J].$$
+
+Conveniently, this turns into a sum of matrix-vector multiplications.
+
+### By a batch of vectors
+
+We can easily extend this to multiplication by a batch of vectors, where:
+$$Y[I,N] = W[I,J]V[J,N],$$
+is defined as
+$$Y[i,n] = \sum_{j<J} W[i,j]V[j,n].$$
+
+Then
+$$\begin{aligned}
+dY[i,n] &= \sum_{j<J}\left(W[i,j]\\,dV[j,n]+dW[i,j]V[j,n]\right)\\\\
+&=\sum_{j<J}W[i,j]\\,dV[j,n] + \sum_{j<J}dW[i,j]V[j,n].
+\end{aligned}$$
+Using the definition of matrix multiplication by a batch of vectors,
+$$dY[I,N] = W[I,J]\\,dV[J,N]+dW[I,J]V[J,N].$$
+
+Like the batched vector addition, this requires care during backwards propagation.
