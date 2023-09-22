@@ -114,62 +114,104 @@ For a scalar $t$, we treat $dt$ as a scalar. For a tensor $t$ we treat $dt$ as a
 
 ## Vector addition
 
-For
-$$Y[I] = U[I] + V[I]$$
-defined by
-$$Y[i] = U[i] + V[i],$$
+For a size $I$,
+$$y[I] = u[I] + v[I]$$
+is defined by
+$$y[i] = u[i] + v[i],$$
 we see that
-$$dY[i] = dU[i] + dV[i],$$
-so
-$$dY[I] = dU[I] + dV[I].$$
+$$dy[i] = du[i] + dv[i],$$
+so for forward propagation,
+$$dy[I] = du[I] + dv[I].$$
+and for backward propagation,
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+du[I] &\pluseq dy[I]\\\\
+dv[I] &\pluseq dy[I].
+\end{aligned}$$
 
-### Batched vector addition
+### Broadcast vector addition
 
 When adding a bias, the bias vector is broadcast.
 
 For
-$$Y[I,N] = U[I,N] + B[I]$$
+$$y[N, I] = u[N, I] + b[I]$$
 defined by
-$$Y[i,n] = U[i,n] + B[i],$$
+$$y[n,i] = u[n,i] + b[i],$$
 we see that
-$$dY[i,n] = dU[i,n] + dB[i],$$
-so
-$$dY[I,N] = dU[I,N] + dB[I].$$
-
-We will see that this requires careful treatment with back propagation.
+$$dy[n,i] = du[n,i] + db[i],$$
+so for forward propagation,
+$$dy[N,I] = du[N,I] + db[I].$$
+For backward propagation, we propagate to $db[i]$ for every $dy[i,n]$ so there will be a summation:
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+du[N, I] &\pluseq dy[N, I]\\\\
+db[I]&\pluseq\sum_{n<N} dy[n, I].
+\end{aligned}$$
 
 ## Matrix multiplication
 
 ### By a vector
 
 The matrix multiplication
-$$Y[I] = W[I,J]V[J],$$
+$$y[I] = w[I,J]v[J],$$
 is defined as
-$$Y[i] = \sum_{j<J} W[i,j]V[j].$$
+$$y[i] = \sum_{j<J} w[i,j]v[j].$$
 
 Then
 $$\begin{aligned}
-dY[i] &= \sum_{j<J}\left(W[i,j]\\,dV[j]+dW[i,j]V[j]\right)\\\\
-&=\sum_{j<J}W[i,j]\\,dV[j] + \sum_{j<J}dW[i,j]V[j].
+dy[i] &= \sum_{j<J}\left(w[i,j]\\,dv[j]+dw[i,j]v[j]\right)\\\\
+&=\sum_{j<J}w[i,j]\\,dv[j] + \sum_{j<J}dw[i,j]v[j].
 \end{aligned}$$
-Using the definition of matrix multiplication,
-$$dY[I] = W[I,J]\\,dV[J]+dW[I,J]V[J].$$
+Using the definition of matrix multiplication, for forward propagation,
+$$dy[I] = w[I,J]\\,dv[J]+dw[I,J]v[J].$$
 
-Conveniently, this turns into a sum of matrix-vector multiplications.
+For backwards propagation,
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+dv[J]&\pluseq dy[I]w[I,J]\\\\
+dw[i,j]&\pluseq dy[i]v[j].
+\end{aligned}$$
 
 ### By a batch of vectors
 
 We can easily extend this to multiplication by a batch of vectors, where:
-$$Y[I,N] = W[I,J]V[J,N],$$
+$$y[N,I] = w[I,J]v[N,J],$$
 is defined as
-$$Y[i,n] = \sum_{j<J} W[i,j]V[j,n].$$
+$$y[n,i] = \sum_{j<J} w[i,j]v[n,j].$$
 
 Then
-$$\begin{aligned}
-dY[i,n] &= \sum_{j<J}\left(W[i,j]\\,dV[j,n]+dW[i,j]V[j,n]\right)\\\\
-&=\sum_{j<J}W[i,j]\\,dV[j,n] + \sum_{j<J}dW[i,j]V[j,n].
+$$
+\begin{aligned}
+dy[n,i] &= \sum_{j<J}\left(w[i,j]\\,dv[n,j]+dw[i,j]v[n,j]\right)\\\\
+&=\sum_{j<J}w[i,j]\\,dv[n,j] + \sum_{j<J}dw[i,j]v[n,j].
 \end{aligned}$$
-Using the definition of matrix multiplication by a batch of vectors,
-$$dY[I,N] = W[I,J]\\,dV[J,N]+dW[I,J]V[J,N].$$
+So for forward propagation,
+$$dy[N,I] = w[I,J]\\,dv[N,J]+dw[I,J]v[N,J].$$
 
-Like the batched vector addition, this requires care during backwards propagation.
+Like with batched vector addition, we again have summations for the terms without $N$:
+$$\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+dv[N,J]&\pluseq dy[N,I]w[I,J]\\\\
+dw[i,j]&\pluseq\sum_{n<N}dy[n,i]v[n,j].
+\end{aligned}$$
+
+## Reductions
+
+A reduction sums an axis of a tensor:
+$$y[I] = \sum_{j<J} x[I,j]$$
+is defined by
+$$y[i] = \sum_{j<J} x[i,j].$$
+
+$$dy[i] = \sum_{j<J} dx[i,j].$$
+
+In this case, the sum shows up in forward propagation:
+$$dy[I] = \sum_{j<J} dx[I,j],$$
+
+while backwards propagation is broadcast addition:
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+dx[I,J]\pluseq dy[I].
+$$
