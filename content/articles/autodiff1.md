@@ -5,7 +5,7 @@ math: true
 ---
 # Introduction
 
-When most people hear the term "Automatic differentiation," they think it is the same process learned in calculus only performed by a program. Others think it is a numeric approximation to the actual derivative. In reality, it is a clever transformation that extends a program that computes a function into one that also computes its derivatives with respect to specified parameters. Here we will provide a brief review of calculus followed by an explanation of automatic differentiation and some applications to deep learning computations.
+When most people hear the term "Automatic differentiation," they think it is the same process learned in calculus only performed by a program. Others think it is a numeric approximation to the actual derivative. In reality, it is a clever transformation that extends a program that computes a function into one that also computes its derivatives with respect to specified parameters. Here we will provide a description of forwards and backwards automatic differentiation.
 
 # Computing derivatives
 
@@ -108,9 +108,9 @@ So $\frac{dy}{da}=x+b$ and $\frac{dy}{db}=x+a.$
 
 If you think it is a bit mysterious how backwards propagation ends up with the correct values, your intuition is correct. If is often explained as just being the chain rule, along with some vigorous hand waving. Of course the chain rule is involved, but it is more interesting than just the chain rule. A future page will explain how it works.
 
-# Extending to tensors
+# Tensor computations
 
-For a scalar $t$, we treat $dt$ as a scalar. For a tensor $t$ we treat $dt$ as a tensor with the same shape. But first we need to determine how to compute the derivative of the basic tensor operations.
+For a scalar $t$, we treat $dt$ as a scalar. For a tensor $t$ we treat $dt$ as a tensor with the same shape. For non-negative integers, $I, J, \ldots$, $t[I,J, \ldots]$ designates a tensor of the given shape, while for $i\in I, j\in j, \ldots, t[i,j,\ldots]$ designates an element of the tensor. $t[i,J,\ldots]$ is a slice of the tensor.
 
 ## Vector addition
 
@@ -130,39 +130,96 @@ du[I] &\pluseq dy[I]\\\\
 dv[I] &\pluseq dy[I].
 \end{aligned}$$
 
-### Broadcast vector addition
+## Elementwise operations
 
-When adding a bias, the bias vector is broadcast.
+Vector addition is a specific case of an elementwise operation. An $n$-ary function $f$ is applied to $n$ tensors, all with the same shape.
+$$\begin{aligned}
+y[I] &= f(x_0[I], x_1[I], \ldots)\\\\
+y[i] &= f(x_0[i], x_1[i], \ldots)
+\end{aligned}$$
+Taking the derivative gives the forward propagation:
+$$\begin{aligned}
+dy[i] &= \sum_j \frac{\partial f(x_0[i], x_1[i], \ldots)}{\partial x_j} dx_i[i]\\\\
+&=\sum_j \frac{\partial f(x_0, x_1, \ldots)}{\partial x_j} dx_i,
+\end{aligned}$$
+so, for backwards propagation,
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+dx_i\pluseq \frac{\partial f(x_0, x_1, \ldots)}{\partial x_j}\\,dy
+$$
+
+## General coordinates
+
+Everything above in vector addition and elementwise operations can be extended to matrices by changing each '$I$' to '$I,J$' and changing each '$i$' to '$i,j$'. The process could then be repeated for $I,J,K,$ etc.
+
+It is easier to say $I$ is a shape, so it could be $10,$ but it could also be $10, 128, 128, 3.$ Then rather than saying $i<I$ to indicate the coordinate in $I$, we say $i\in I$.
+
+We can take this a step further by letting $I,J$ denote a partitioning of a shape. For example, in $N,S,C,$ $N$ could be the batch size, $S$ could be the spatial dimensions, and $C$ the number of channels. In $n,s,c$ the coordinates are concatenated back together. Applying to $10,128,128,3$, we would have $N=10$, $S=128,128$ and $C=3$. If $n=2$, $s=5,24$ and $c=1$ then $n,s,c$ is the coordinate $2,5,24,1.$
+
+We can even take this further by letting $I,J$ be a partitioning that carries axis positions. For example, $I$ could be the odd axes and $J$ could be the even axes, and they could even match different axes in different tensors. And with the axes carrying the position, $I,J$ and $J,I$ mean the same thing. Automatic differentiation doesn't care about axis order or how tensors are implemented. On the other hand, it is very important when implementing the operations.
+
+If $I$ is empty, we treat it as having one empty coordinate, so $I,J$ acts like $I$ and the coordinates in $I,J$ are the same as those in $J$. This is the same as how a tensor with no axes is a scalar.
+
+## Broadcast
+
+In a broadcast we add dimensions that we ignore.
+$$\begin{aligned}
+y[I,J] &= \mathop{\texttt{broadcast}}(x[I], J)\\\\
+y[i,j] &= x[i].
+\end{aligned}$$
+This is an example where the fully generalized coordinates apply. The $I$ and $J$ can apply to any number of axes which may be intermingled with each other in any order on the left side.
+
+The derivative gives the forward propagation:
+$$\begin{aligned}
+dy[i,j] &= dx[i]\\\\
+dy[I,J] &= dx.
+\end{aligned}$$
+
+For backwards propagation, each $dx[i]$ is incremented once for each $j\in J$ in $dy[i,j]$, so we can gather all these sums toegther, as follows:
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+dx[i]&\pluseq dy[i,j]\\\\
+dx[i]&\pluseq \sum_{j\in J} dy[i,j]\\\\
+dx[I] &\pluseq \sum_{j\in J} dy[I,j]
+\end{aligned}$$
+
+## Broadcast vector addition
+
+When adding a bias, the bias vector is broadcast. We could explicitly broadcast the bias vector and then add, or combine the two steps:
 
 For
-$$y[N, I] = u[N, I] + b[I]$$
-defined by
-$$y[n,i] = u[n,i] + b[i],$$
-we see that
-$$dy[n,i] = du[n,i] + db[i],$$
-so for forward propagation,
-$$dy[N,I] = du[N,I] + db[I].$$
+$$
+\begin{aligned}
+y[N, I] &= u[N, I] + b[I]\\\\
+y[n,i] &= u[n,i] + b[i],
+\end{aligned}$$
+we see that for forward propagation,
+$$\begin{aligned}
+dy[n,i] &= du[n,i] + db[i],\\\\
+dy[N,I] &= du[N,I] + db[I].
+\end{aligned}$$
 For backward propagation, we propagate to $db[i]$ for every $dy[i,n]$ so there will be a summation:
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
 du[N, I] &\pluseq dy[N, I]\\\\
-db[I]&\pluseq\sum_{n<N} dy[n, I].
+db[I]&\pluseq\sum_{n\in N} dy[n, I].
 \end{aligned}$$
 
-## Matrix multiplication
+## Matrix multiplication by a vector
 
-### By a vector
-
-The matrix multiplication
-$$y[I] = w[I,J]v[J],$$
-is defined as
-$$y[i] = \sum_{j<J} w[i,j]v[j].$$
-
-Then
+Matrix-vector multiplication is:
 $$\begin{aligned}
-dy[i] &= \sum_{j<J}\left(w[i,j]\\,dv[j]+dw[i,j]v[j]\right)\\\\
-&=\sum_{j<J}w[i,j]\\,dv[j] + \sum_{j<J}dw[i,j]v[j].
+y[I] &= w[I,J]v[J]\\\\
+y[i] &= \sum_{j\in J} w[i,j]v[j].
+\end{aligned}$$
+Even with $J$ a generalized coordinate, $v[J]$ is still acting as a vector. If $J$ were two-dimensional, this multiplication would be like in mnist-mlp when the 2d image is flattened and then multiplied by the weights.
+
+The derivative is
+$$\begin{aligned}
+dy[i] &= \sum_{j\in J}\left(w[i,j]\\,dv[j]+dw[i,j]v[j]\right)\\\\
+&=\sum_{j\in J}w[i,j]\\,dv[j] + \sum_{j\in J}dw[i,j]v[j].
 \end{aligned}$$
 Using the definition of matrix multiplication, for forward propagation,
 $$dy[I] = w[I,J]\\,dv[J]+dw[I,J]v[J].$$
@@ -175,42 +232,85 @@ dv[J]&\pluseq dy[I]w[I,J]\\\\
 dw[i,j]&\pluseq dy[i]v[j].
 \end{aligned}$$
 
-### By a batch of vectors
+## Matrix-matrix multiplication
 
-We can easily extend this to multiplication by a batch of vectors, where:
-$$y[N,I] = w[I,J]v[N,J],$$
-is defined as
-$$y[n,i] = \sum_{j<J} w[i,j]v[n,j].$$
+$$\begin{aligned}
+z[I,K] &= x[I,J]y[J,K]\\\\
+z[i,k] &= \sum_{j\in J} x[i,j]y[j,k].
+\end{aligned}$$
+Although matrix multiplication is not commutative, and often not even defined if the order is changed, the generalized coordinates definition is commutative since the coordinates specify the axes. Also recall that order does not matter since $I, J,$ and $K$ carry the actual positions. The order in the definition is just to make things look like traditional multiplication.
 
-Then
+If $K$ (or $I$) is empty this definition reverts to the matrix-vector definition, and if $I$ and $J$ are empty it becomes the vector inner product. If $I$ and $J$ are empty, $x$ is a scalar and the product becomes scalar-tensor multiplication. Finally, if $J$ is empty the product becomes a "matrix" of the products of all vector element pairs.
+
+The derivative gives the forward propagation, which looks like the scalar version:
+$$\begin{aligned}
+dz[i,k] &= \sum_{j\in J}\left(x[i,j]dy[j,k]+dx[i,j]y[j,k]\right)\\\\
+&=\sum_{j\in J}x[i,j]dy[j,k] + \sum_{j\in J} dx[i,j]y[j,k]\\\\
+dz[I,K] &= x[I,J]dy[J,K] + dx[I,J]y[J,K].
+\end{aligned}$$
+
+For the backwards propagation notice that each $dz[i,k]$ uses a $dy[j,k]$ (for all $i$) and a $dx[i,j]$ (for all $k$) so
 $$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-dy[n,i] &= \sum_{j<J}\left(w[i,j]\\,dv[n,j]+dw[i,j]v[n,j]\right)\\\\
-&=\sum_{j<J}w[i,j]\\,dv[n,j] + \sum_{j<J}dw[i,j]v[n,j].
+dy[j,k]&\pluseq \sum_{i\in I} dz[i,k]x[i,j]\\\\
+dx[i,j]&\pluseq \sum_{k\in K} dz[i,k]y[j,k]
 \end{aligned}$$
-So for forward propagation,
-$$dy[N,I] = w[I,J]\\,dv[N,J]+dw[I,J]v[N,J].$$
+These are matrix products, so:
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+dy[J,K]&\pluseq dz[I,K]x[I,J]\\\\
+dx[I,J]&\pluseq dz[I,K]y[J,K].
+\end{aligned}$$
+Without the generalized coordinates there would be transposes to get the axes in the proper positions.
 
-Like with batched vector addition, we again have summations for the terms without $N$:
-$$\newcommand{\pluseq}{\mathrel{{+}{=}}}
-\begin{aligned}
-dv[N,J]&\pluseq dy[N,I]w[I,J]\\\\
-dw[i,j]&\pluseq\sum_{n<N}dy[n,i]v[n,j].
+## Matrix-batch matrix multiplication
+By adding batch axes, all the variants of matrix multiplication will be covered.
+
+$$\begin{aligned}
+z[N,I,K] &= x[I,J] y[N,J,K]\\\
+z[n,i,k] &= \sum_{j\in J} x[i,j]y[n,j,k].
 \end{aligned}$$
+
+The derivative gives the forward propagation:
+$$\begin{aligned}
+dz[n,i,k]&= \sum_{j\in J}\left( x[i,j]dy[n,j,k] + dx[i,j]y[n,j,k] \right)\\\\
+&=\sum_{j\in J}x[i,j]dy[n,j,k] + \sum_{j\in J}dx[i,j]y[n,j,k]\\\\
+dz[N,I,K]&= x[I,J]dy[N,J,K] + dx[I,J]y[N,J,K].
+\end{aligned}$$
+
+For backward propagation, $dx[I,J]$ requires summation on $N$.
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+dy[n,j,k]&\pluseq \sum_{i\in I}dz[n,i,k]x[i,j]\\\\
+dx[i,j]&\pluseq \sum_{n\in N}\sum_{k\in K} dz[n,i,k]y[n,j,k]
+\end{aligned}$$
+
+These are matrix products, so
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+dy[N,J,K]&\pluseq dz[N,I,K]x[I,J]\\\\
+dx[I,J]&\pluseq dz[I,(N,K)]y[J,(N,K)],
+\end{aligned}$$
+where we combined the two summations in $dx$ by merging the axes.
 
 ## Reductions
 
 A reduction sums an axis of a tensor:
-$$y[I] = \sum_{j<J} x[I,j]$$
-is defined by
-$$y[i] = \sum_{j<J} x[i,j].$$
+$$\begin{aligned}
+y[I] &= \sum_{j\in J} x[I,j]\\\\
+y[i] &= \sum_{j\in J} x[i,j].
+\end{aligned}$$
 
-$$dy[i] = \sum_{j<J} dx[i,j].$$
-
-In this case, the sum shows up in forward propagation:
-$$dy[I] = \sum_{j<J} dx[I,j],$$
-
-while backwards propagation is broadcast addition:
+The derivative gives the forward propagation:
+$$\begin{aligned}
+dy[i] &= \sum_{j\in J} dx[i,j]\\\\
+dy[I] &= \sum_{j\in J} dx[I,j].
+\end{aligned}$$
+The forward propagation is a reduction, while the backwards propagation is a broadcast addition:
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 dx[I,J]\pluseq dy[I].
