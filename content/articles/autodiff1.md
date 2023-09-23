@@ -1,13 +1,13 @@
 ---
 title: "Automatic Differentiation"
-date: 2023-09-19T14:53:04-07:00
+date: 2023-09-22T14:53:04-07:00
 math: true
 ---
 # Introduction
 
 When most people hear the term "Automatic differentiation," they think it is the same process learned in calculus only performed by a program. Others think it is a numeric approximation to the actual derivative. In reality, it is a clever transformation that extends a program that computes a function into one that also computes its derivatives with respect to specified parameters. Here we will provide a description of forwards and backwards automatic differentiation.
 
-# Computing derivatives
+# Computing scalar derivatives
 
 We'll start with finding a simple derivative three ways:
  - Symbolically, the way you learn in calculus,
@@ -108,7 +108,7 @@ So $\frac{dy}{da}=x+b$ and $\frac{dy}{db}=x+a.$
 
 If you think it is a bit mysterious how backwards propagation ends up with the correct values, your intuition is correct. If is often explained as just being the chain rule, along with some vigorous hand waving. Of course the chain rule is involved, but it is more interesting than just the chain rule. A future page will explain how it works.
 
-# Tensor computations
+# Tensor derivatives
 
 For a scalar $t$, we treat $dt$ as a scalar. For a tensor $t$ we treat $dt$ as a tensor with the same shape. For non-negative integers, $I, J, \ldots$, $t[I,J, \ldots]$ designates a tensor of the given shape, while for $i\in I, j\in j, \ldots, t[i,j,\ldots]$ designates an element of the tensor. $t[i,J,\ldots]$ is a slice of the tensor.
 
@@ -315,3 +315,41 @@ $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 dx[I,J]\pluseq dy[I].
 $$
+
+## Zero padding
+
+Padding adds $0$s before and after the elements of some axes. Let the axes to be padded be $P$, with $p_0, p_1$ being padding to be added before and after the $P$ axes in the input tensor.
+
+$$\begin{aligned}
+y[I,P+p_0+p_1]&=\mathop{\texttt{pad}}(x[I,P], p_0, p_1)\\\\
+y[i,p]&=\begin{cases}
+x[i,p-p_0]&\text{if }p_0\le p < P+p_0\\\\
+0&\text{otherwise}.
+\end{cases}
+\end{aligned}$$
+
+The forward propagation comes from the derivative:
+$$\begin{aligned}
+dy[i,p]&=\begin{cases}
+dx[i,p-p_0]&\text{if }p_0\le p < P+p_0\\\\
+0&\text{otherwise}
+\end{cases}\\\\
+dy[I,P+p_0+p_1]&=\mathop{\texttt{pad}}(dx[I,P], p_0, p_1).
+\end{aligned}$$
+These definitions also work for if $p_0$ or $p_1$ include negative offsets, which is simple slicing. This lets us write the backwards propagation as:
+
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+dx[I,P]\pluseq \mathop{\texttt{pad}}(dy[I,P+p_0+p_1], -p_0, -p_1).
+$$
+The backward propgation also works for negative offsets since is puts $0$s in the back propagation at coordinates that were sliced.
+
+If the padding is changed to be able to specify any constant value, the propagations would remain the same as with zero padding.
+
+## Dilation and striding
+
+## Slice with stride
+
+## Simple convolution
+
+## Convolution with padding and stride
