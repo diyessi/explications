@@ -169,7 +169,7 @@ If $I$ is empty, we treat it as having one empty coordinate, so $I,J$ acts like 
 
 In a broadcast we add dimensions that we ignore.
 $$\begin{aligned}
-y[I,J] &= \mathop{\texttt{broadcast}}(x[I], J)\\\\
+y[I,J] &= \mathop{\mathtt{broadcast}}(x[I], J)\\\\
 y[i,j] &= x[i].
 \end{aligned}$$
 This is an example where the fully generalized coordinates apply. The $I$ and $J$ can apply to any number of axes which may be intermingled with each other in any order on the left side.
@@ -326,7 +326,7 @@ $$
 Padding adds $0$s before and after the elements of some axes. Let the axes to be padded be $P$, with $p_0, p_1$ being padding to be added before and after the $P$ axes in the input tensor.
 
 $$\begin{aligned}
-y[I=P+p_0+p_1]&=\mathop{\texttt{pad}}(x[P], p_0, p_1)\\\\
+y[I=P+p_0+p_1]&=\mathop{\mathtt{pad}}(x[P], p_0, p_1)\\\\
 y[i]&=\begin{cases}
 x[i-p_0]&\text{if }p_0\le i < P+p_0\\\\
 0&\text{otherwise}.
@@ -335,7 +335,7 @@ x[i-p_0]&\text{if }p_0\le i < P+p_0\\\\
 
 Slicing removes elements outside of a region:
 $$\begin{aligned}
-y[I=S-s_0-s_1]&=\mathop{\texttt{slice}}(x[S], s_0, s_1)\\\\
+y[I=S-s_0-s_1]&=\mathop{\mathtt{slice}}(x[S], s_0, s_1)\\\\
 y[i]&=x[i+s_0]
 \end{aligned}$$
 
@@ -345,7 +345,7 @@ dy[i]&=\begin{cases}
 dx[i-p_0]&\text{if }p_0\le p < P+p_0\text{ for all axes}\\\\
 0&\text{otherwise}
 \end{cases}\\\\
-dy[I]&=\mathop{\texttt{pad}}(dx[P], p_0, p_1).
+dy[I]&=\mathop{\mathtt{pad}}(dx[P], p_0, p_1).
 \end{aligned}$$
 
 The backward propagation for pad just needs to shift the coordinates:
@@ -353,7 +353,7 @@ $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
 \overline{dx[p]}&\pluseq dy[p-p_0]\\\\
-\overline{dx[P]}&\pluseq \mathop{\texttt{slice}}(\overline{dy[I]}, p_0, p_1).
+\overline{dx[P]}&\pluseq \mathop{\mathtt{slice}}(\overline{dy[I]}, p_0, p_1).
 \end{aligned}
 $$
 
@@ -361,7 +361,7 @@ For slice, the forward propagation is:
 $$
 \begin{aligned}
 dy[i]&= dx[i+s_0]\\\\
-dy[I]&= \mathop{\texttt{slice}}(dx[S],s_0,s_1)
+dy[I]&= \mathop{\mathtt{slice}}(dx[S],s_0,s_1)
 \end{aligned}
 $$
 and the backwards propagation is:
@@ -369,7 +369,7 @@ $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
 \overline{dx[i+s_0]}&\pluseq \overline{dy[i]}\\\\
-\overline{dx[S]}&\pluseq \mathop{\texttt{pad}}(\overline{dy[I]},s_0,s_1).
+\overline{dx[S]}&\pluseq \mathop{\mathtt{pad}}(\overline{dy[I]},s_0,s_1).
 \end{aligned}$$
 
 ## Simple dilation and striding
@@ -396,7 +396,7 @@ dy[i]&=\begin{cases}
 dx\left[\left\lfloor\frac{p}{d}\right\rfloor\right]&\text{if }p \bmod d = 0\text{ for all axes}\\\\
 0&\text{otherwise}.
 \end{cases}\\\\
-dy[I]&=\mathop{\texttt{dilate}}(dx[D],d).
+dy[I]&=\mathop{\mathtt{dilate}}(dx[D],d).
 \end{aligned}$$
 
 For backward propagation of dilation,
@@ -404,14 +404,14 @@ $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
 \overline{dx[i]}&\pluseq\overline{dy[di]}\\\\
-\overline{dx[I]}&\pluseq\mathop{\texttt{stride}}(\overline{dy[I]},d).
+\overline{dx[I]}&\pluseq\mathop{\mathtt{stride}}(\overline{dy[I]},d).
 \end{aligned}
 $$
 
 For forward propagation of stride,
 $$\begin{aligned}
 dy[i]&=dx[is]\\\\
-dy[I]&=\mathop{\texttt{stride}}(dx[S],s).
+dy[I]&=\mathop{\mathtt{stride}}(dx[S],s).
 \end{aligned}$$
 
 For backward propagation of stride,
@@ -423,8 +423,33 @@ $$
 \end{aligned}$$
 The first form is more efficient since it avoids adding many $0$s.
 
-## Slice with stride
+## Slice with stride, dilation with pad
 
-## Simple convolution
+Slice is often combined with a stride. Dilation isn't combined with a pad, but it will be useful to do so later.
+
+$$
+\begin{aligned}
+\mathop{\mathtt{slice}}(x[S],s_0,s_1,s_2) &= \mathop{\mathtt{stride}}(\mathop{\mathtt{slice}}(x[S],s_0, s_1),s_2)\\\\
+\mathop{\mathtt{dilate}}(x[D],d,p_0,p_1)&= \mathop{\mathtt{pad}}(\mathop{\mathtt{dilate}}(x[D], d), p_0, p_1).
+\end{aligned}
+$$
+
+## Basic convolution
+
+The input $x[S_x,C_x]$ of a convolution has spatial axes $S_x$ and channel axes $C_x$. A kernel $k[S_k,C_x,C_y]$ has spatial axes $S_k$, input channels $C_x$ and output channels $C_y$. The number of axes in $S_x$ and $S_k$ must be the same, and the length of each axis in $S_k$ must be no greater than the corresponding axis in $S_x$. The kernel is positioned over every location in the input and produces $C_y$ channel outputs that are a linear combination of all the $C_x$ channel values in the input covered by the kernel.
+
+$$\begin{aligned}
+y[S_y=S_x-S_k+1, C_y]&=\mathop{\mathtt{conv}}(x[S_x,C_x], k[S_k, C_x, C_y])\\\\
+y[s_y,c_y]&=\sum_{s_y\le s<s_y+S_k}\sum_{c\in C_x} x[s,c]k[s-s_y,c,c_y].
+\end{aligned}$$
+
+The derivative gives the forward propagation:
+$$
+\begin{aligned}
+dy[s_y,c_y]&=\sum_{s_y\le s<s_y+S_k}\sum_{c\in C_x}\left( x[s,c]dk[s-s_y,c,c_y]+dx[s,c]k[s-s_y,c,c_y]\right)\\\\
+&=\sum_{s_y\le s<s_y+S_k}\sum_{c\in C_x}\left( x[s,c]dk[s-s_y,c,c_y]\right)+\sum_{s_y\le s<s_y+S_k}\sum_{c\in C_x}\left(dx[s,c]k[s-s_y,c,c_y]\right)\\\\
+dy[S_y,C_y]&=\mathop{\mathtt{conv}}(x[S_x,C_x], dk[S_k,C_x,C_y])+\mathop{\mathtt{conv}}(dx[S_x,C_x], k[S_k,C_x,C_y]).
+\end{aligned}
+$$
 
 ## Convolution with padding and stride
