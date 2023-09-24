@@ -440,14 +440,14 @@ The input $x[S_x,C_x]$ of a convolution has spatial axes $S_x$ and channel axes 
 
 $$\begin{aligned}
 y[S_y=S_x-S_k+1, C_y]&=\mathop{\mathtt{conv}}(x[S_x,C_x], k[S_k, C_x, C_y])\\\\
-y[s_y,c_y]&=\sum_{s_y\le s<s_y+S_k}\sum_{c\in C_x} x[s,c]k[s-s_y,c,c_y].
+y[s_y,c_y]&=\sum_{s \in S_k}\sum_{c\in C_x} x[s_y+s,c]k[s,c,c_y].
 \end{aligned}$$
 
 The derivative gives the forward propagation:
 $$
 \begin{aligned}
-dy[s_y,c_y]&=\sum_{s_y\le s<s_y+S_k}\sum_{c\in C_x}\left( x[s,c]dk[s-s_y,c,c_y]+dx[s,c]k[s-s_y,c,c_y]\right)\\\\
-&=\sum_{s_y\le s<s_y+S_k}\sum_{c\in C_x}\left( x[s,c]dk[s-s_y,c,c_y]\right)+\sum_{s_y\le s<s_y+S_k}\sum_{c\in C_x}\left(dx[s,c]k[s-s_y,c,c_y]\right)\\\\
+dy[s_y,c_y]&=\sum_{s\in S_k}\sum_{c\in C_x}\left( x[s_y+s,c]dk[s,c,c_y]+dx[s_y+s,c]k[s,c,c_y]\right)\\\\
+&=\sum_{s\in S_k}\sum_{c\in C_x}\left( x[s_y+s,c]dk[s,c,c_y]\right)+\sum_{s\in S_k}\sum_{c\in C_x}\left(dx[s_y+s,c]k[s,c,c_y]\right)\\\\
 dy[S_y,C_y]&=\mathop{\mathtt{conv}}(x[S_x,C_x], dk[S_k,C_x,C_y])+\mathop{\mathtt{conv}}(dx[S_x,C_x], k[S_k,C_x,C_y]).
 \end{aligned}
 $$
