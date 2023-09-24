@@ -7,7 +7,7 @@ math: true
 
 When most people hear the term "Automatic differentiation," they think it is the same process learned in calculus only performed by a program. Others think it is a numeric approximation to the actual derivative. In reality, it is a clever transformation that extends a program that computes a function into one that also computes its derivatives with respect to specified parameters. Here we will provide a description of forwards and backwards automatic differentiation.
 
-# Computing scalar derivatives
+# Scalar derivatives
 
 We'll start with finding a simple derivative three ways:
  - Symbolically, the way you learn in calculus,
@@ -65,7 +65,7 @@ $\frac{dy}{da} = x + b$ and $\frac{dy}{db} = x + a.$
 
 ## Backward propagation
 
-As with forward propagation we begin by rewriting the computation $y=f(x)$ as a series of primitive steps:
+As with forward propagation we begin by rewriting the computation $y=f(x)$ as a series of primitive steps, setting $t_i$ (written `ti`) to the result of each step:
 ```python
 t0 = load('x')  # x
 t1 = load('a')  # a
@@ -75,7 +75,7 @@ t4 = t0 + t3    # x + b
 t5 = t2 * t4    # (x + a) * (x + b)
 y = t5
 ```
-Now, for every `t_i` we add a `dt_i = 0:`
+Now, for every $t_i$ we add a $\overline{dt_i}$, which we'll write as `dti = 0,` that will accumulate contributions.
 ```python
 dt0 = 0
 dt1 = 0
@@ -84,15 +84,20 @@ dt3 = 0
 dt4 = 0
 dt5 = 0
 ```
-Next we let `dy = 1`:
+Next we let $\overline{dy}$ be $1$:
 ```python
 dy = 1
 ```
-Now we work backwards through the original computation looking for the first operation we haven't done a backprop for yet; in this case it is `y = t5.` We take the derivative in differential form: `dy = dt5`. We want it in the form of the sum of multiples of `dti`, which is already the case. Then for each such multiple, we had the product of the value on the left and the multiple to the `dt` variable:
+Now we work backwards through the original computation. The derivative of each line will be of the form $dt_i=\sum_{j<i}> a_jdt_j$. For each term in the derivative, we add a computation
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\overline{dt_j}\pluseq a_j\overline{dt_j},
+$$
+starting with `y = t5:`
 ```python
 dt5 += dy  # 1
 ```
-Now we move to the next unprocessed operation, `t5 = t2 * t4.` Taking the derivative gives `dt5 = t2 * dt4 + t4 * dt2` so we get two steps:
+Now we move to the next unprocessed operation, $t_5=t_2t_4.$ Taking the derivative gives $dt_5 = t_2dt_4+t_4dt_2,$ so we get two steps:
 ```python
 dt4 += dt5 * t2 # x + a
 dt2 += dt5 * t4 # x + b
@@ -126,8 +131,8 @@ and for backward propagation,
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-du[I] &\pluseq dy[I]\\\\
-dv[I] &\pluseq dy[I].
+\overline{du[I]} &\pluseq \overline{dy[I]}\\\\
+\overline{dv[I]} &\pluseq \overline{dy[I]}.
 \end{aligned}$$
 
 ## Elementwise operations
@@ -145,7 +150,7 @@ dy[i] &= \sum_j \frac{\partial f(x_0[i], x_1[i], \ldots)}{\partial x_j} dx_i[i]\
 so, for backwards propagation,
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
-dx_i\pluseq \frac{\partial f(x_0, x_1, \ldots)}{\partial x_j}\\,dy
+\overline{dx_i}\pluseq \frac{\partial f(x_0, x_1, \ldots)}{\partial x_i}\\,\overline{dy}
 $$
 
 ## General coordinates
@@ -179,9 +184,9 @@ For backwards propagation, each $dx[i]$ is incremented once for each $j\in J$ in
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-dx[i]&\pluseq dy[i,j]\\\\
-dx[i]&\pluseq \sum_{j\in J} dy[i,j]\\\\
-dx[I] &\pluseq \sum_{j\in J} dy[I,j]
+\overline{dx[i]}&\pluseq \overline{dy[i,j]}\\\\
+\overline{dx[i]}&\pluseq \sum_{j\in J} \overline{dy[i,j]}\\\\
+\overline{dx[I]} &\pluseq \sum_{j\in J} \overline{dy[I,j]}
 \end{aligned}$$
 
 ## Broadcast vector addition
@@ -203,8 +208,8 @@ For backward propagation, we propagate to $db[i]$ for every $dy[i,n]$ so there w
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-du[N, I] &\pluseq dy[N, I]\\\\
-db[I]&\pluseq\sum_{n\in N} dy[n, I].
+\overline{du[N, I]} &\pluseq \overline{dy[N, I]}\\\\
+\overline{db[I]}&\pluseq\sum_{n\in N} \overline{dy[n, I]}.
 \end{aligned}$$
 
 ## Matrix multiplication by a vector
@@ -228,8 +233,8 @@ For backwards propagation,
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-dv[J]&\pluseq dy[I]w[I,J]\\\\
-dw[i,j]&\pluseq dy[i]v[j].
+\overline{dv[J]}&\pluseq \overline{dy[I]}w[I,J]\\\\
+\overline{dw[i,j]}&\pluseq \overline{dy[i]}v[j].
 \end{aligned}$$
 
 ## Matrix-matrix multiplication
@@ -253,15 +258,15 @@ For the backwards propagation notice that each $dz[i,k]$ uses a $dy[j,k]$ (for a
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-dy[j,k]&\pluseq \sum_{i\in I} dz[i,k]x[i,j]\\\\
-dx[i,j]&\pluseq \sum_{k\in K} dz[i,k]y[j,k]
+\overline{dy[j,k]}&\pluseq \sum_{i\in I} \overline{dz[i,k]}x[i,j]\\\\
+\overline{dx[i,j]}&\pluseq \sum_{k\in K} \overline{dz[i,k]}y[j,k]
 \end{aligned}$$
 These are matrix products, so:
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-dy[J,K]&\pluseq dz[I,K]x[I,J]\\\\
-dx[I,J]&\pluseq dz[I,K]y[J,K].
+\overline{dy[J,K]}&\pluseq \overline{dz[I,K]}x[I,J]\\\\
+\overline{dx[I,J]}&\pluseq \overline{dz[I,K]}y[J,K].
 \end{aligned}$$
 Without the generalized coordinates there would be transposes to get the axes in the proper positions.
 
@@ -284,16 +289,16 @@ For backward propagation, $dx[I,J]$ requires summation on $N$.
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-dy[n,j,k]&\pluseq \sum_{i\in I}dz[n,i,k]x[i,j]\\\\
-dx[i,j]&\pluseq \sum_{n\in N}\sum_{k\in K} dz[n,i,k]y[n,j,k]
+\overline{dy[n,j,k]}&\pluseq \sum_{i\in I}\overline{dz[n,i,k]}x[i,j]\\\\
+\overline{dx[i,j]}&\pluseq \sum_{n\in N}\sum_{k\in K} \overline{dz[n,i,k]}y[n,j,k]
 \end{aligned}$$
 
 These are matrix products, so
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-dy[N,J,K]&\pluseq dz[N,I,K]x[I,J]\\\\
-dx[I,J]&\pluseq dz[I,(N,K)]y[J,(N,K)],
+\overline{dy[N,J,K]}&\pluseq \overline{dz[N,I,K]}x[I,J]\\\\
+\overline{dx[I,J]}&\pluseq \overline{dz[I,(N,K)]}y[J,(N,K)],
 \end{aligned}$$
 where we combined the two summations in $dx$ by merging the axes.
 
@@ -313,40 +318,110 @@ dy[I] &= \sum_{j\in J} dx[I,j].
 The forward propagation is a reduction, while the backwards propagation is a broadcast addition:
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
-dx[I,J]\pluseq dy[I].
+\overline{dx[I,J]}\pluseq \overline{dy[I]}.
 $$
 
-## Zero padding
+## Zero padding/Slice
 
 Padding adds $0$s before and after the elements of some axes. Let the axes to be padded be $P$, with $p_0, p_1$ being padding to be added before and after the $P$ axes in the input tensor.
 
 $$\begin{aligned}
-y[I,P+p_0+p_1]&=\mathop{\texttt{pad}}(x[I,P], p_0, p_1)\\\\
-y[i,p]&=\begin{cases}
-x[i,p-p_0]&\text{if }p_0\le p < P+p_0\\\\
+y[I=P+p_0+p_1]&=\mathop{\texttt{pad}}(x[P], p_0, p_1)\\\\
+y[i]&=\begin{cases}
+x[i-p_0]&\text{if }p_0\le i < P+p_0\\\\
 0&\text{otherwise}.
 \end{cases}
 \end{aligned}$$
 
-The forward propagation comes from the derivative:
+Slicing removes elements outside of a region:
 $$\begin{aligned}
-dy[i,p]&=\begin{cases}
-dx[i,p-p_0]&\text{if }p_0\le p < P+p_0\\\\
+y[I=S-s_0-s_1]&=\mathop{\texttt{slice}}(x[S], s_0, s_1)\\\\
+y[i]&=x[i+s_0]
+\end{aligned}$$
+
+The forward propagation for pad comes from the derivative:
+$$\begin{aligned}
+dy[i]&=\begin{cases}
+dx[i-p_0]&\text{if }p_0\le p < P+p_0\text{ for all axes}\\\\
 0&\text{otherwise}
 \end{cases}\\\\
-dy[I,P+p_0+p_1]&=\mathop{\texttt{pad}}(dx[I,P], p_0, p_1).
+dy[I]&=\mathop{\texttt{pad}}(dx[P], p_0, p_1).
 \end{aligned}$$
-These definitions also work for if $p_0$ or $p_1$ include negative offsets, which is simple slicing. This lets us write the backwards propagation as:
 
+The backward propagation for pad just needs to shift the coordinates:
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
-dx[I,P]\pluseq \mathop{\texttt{pad}}(dy[I,P+p_0+p_1], -p_0, -p_1).
+\begin{aligned}
+\overline{dx[p]}&\pluseq dy[p-p_0]\\\\
+\overline{dx[P]}&\pluseq \mathop{\texttt{slice}}(\overline{dy[I]}, p_0, p_1).
+\end{aligned}
 $$
-The backward propgation also works for negative offsets since is puts $0$s in the back propagation at coordinates that were sliced.
 
-If the padding is changed to be able to specify any constant value, the propagations would remain the same as with zero padding.
+For slice, the forward propagation is:
+$$
+\begin{aligned}
+dy[i]&= dx[i+s_0]\\\\
+dy[I]&= \mathop{\texttt{slice}}(dx[S],s_0,s_1)
+\end{aligned}
+$$
+and the backwards propagation is:
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+\overline{dx[i+s_0]}&\pluseq \overline{dy[i]}\\\\
+\overline{dx[S]}&\pluseq \mathop{\texttt{pad}}(\overline{dy[I]},s_0,s_1).
+\end{aligned}$$
 
-## Dilation and striding
+## Simple dilation and striding
+
+Dilation interleaves elements of the input tensor with a zero background. The dilation $d$ is the spacing of elements from the input tensor, so each element has $d-1$ $0$s between it and the next element on each axis.
+
+$$\begin{aligned}
+y[I=D(d-1)+1] &= \mathop{\mathtt{dilate}}(x[D], d)\\\\
+y[i] &= \begin{cases}
+x\left[\left\lfloor\frac{p}{d}\right\rfloor\right]&\text{if }p \bmod d = 0\text{ for all axes}\\\\
+0&\text{otherwise}.
+\end{cases}
+\end{aligned}$$
+
+Strides are the opposite of dilation; they select every $s$th element from the input.
+$$\begin{aligned}
+y\left[I=\left\lceil \frac{S}{s}\right\rceil\right] &= \mathop{\mathtt{stride}}(x[S], s)\\\\
+y[i] &= x[is].
+\end{aligned}$$
+
+For forward propagation of dilation,
+$$\begin{aligned}
+dy[i]&=\begin{cases}
+dx\left[\left\lfloor\frac{p}{d}\right\rfloor\right]&\text{if }p \bmod d = 0\text{ for all axes}\\\\
+0&\text{otherwise}.
+\end{cases}\\\\
+dy[I]&=\mathop{\texttt{dilate}}(dx[D],d).
+\end{aligned}$$
+
+For backward propagation of dilation,
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+\overline{dx[i]}&\pluseq\overline{dy[di]}\\\\
+\overline{dx[I]}&\pluseq\mathop{\texttt{stride}}(\overline{dy[I]},d).
+\end{aligned}
+$$
+
+For forward propagation of stride,
+$$\begin{aligned}
+dy[i]&=dx[is]\\\\
+dy[I]&=\mathop{\texttt{stride}}(dx[S],s).
+\end{aligned}$$
+
+For backward propagation of stride,
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+\overline{dx[is]}&\pluseq \overline{dy[i]}\\\\
+\overline{dx[S]}&\pluseq \mathop{\mathtt{dilate}}(\overline{dy[I]}, s).
+\end{aligned}$$
+The first form is more efficient since it avoids adding many $0$s.
 
 ## Slice with stride
 
