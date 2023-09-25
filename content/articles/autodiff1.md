@@ -1,6 +1,6 @@
 ---
 title: "Automatic Differentiation"
-date: 2023-09-22T14:53:04-07:00
+date: 2023-09-25T14:53:04-07:00
 math: true
 ---
 # Introduction
@@ -462,7 +462,7 @@ For $dk$, $x[s_y+s_k, c_x]$ will have $s_y$ take on all values in $S_y,$ so
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-dk[s_k,c_x,c_y]&\pluseq\sum_{s_y\in S_y} dy[s_y,c_y]x[s_y+s_k-S_k+1,c_x].
+\overline{dk[s_k,c_x,c_y]}&\pluseq\sum_{s_y\in S_y} \overline{dy[s_y,c_y]}x[s_y+s_k-S_k+1,c_x].
 \end{aligned}
 $$
 
@@ -470,9 +470,9 @@ For $dx$,
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-dx[s_x,c_x]&\pluseq 
+\overline{dx[s_x,c_x]}&\pluseq 
 \sum_{s_k\in S_k}
-\sum_{c_y\in C_y} dy[s_x-s_k+S_k-1,c_y]k[s_k,c_x,c_y].
+\sum_{c_y\in C_y} \overline{dy[s_x-s_k+S_k-1,c_y]}k[s_k,c_x,c_y].
 \end{aligned}
 $$
 
