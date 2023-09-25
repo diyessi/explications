@@ -5,18 +5,18 @@ math: true
 ---
 # Introduction
 
-When most people hear the term "Automatic differentiation," they think it is the same process learned in calculus only performed by a program. Others think it is a numeric approximation to the actual derivative. In reality, it is a clever transformation that extends a program that computes a function into one that also computes its derivatives with respect to specified parameters. Here we will provide a description of forwards and backwards automatic differentiation.
+When most people hear the term "Automatic differentiation," they think it is the same process learned in calculus only performed symbolically by a program. Others think it is a numeric approximation to the actual derivative. In reality, it is a clever transformation that extends a program that computes a function into one that also computes its derivatives with respect to specific parameters. Here we will provide a description ofautomatic differentiation by both forward and backward propagation.
 
 # Scalar derivatives
 
-We'll start with finding a simple derivative three ways:
+We'll start with finding the derivative of a simple computation in three ways:
  - Symbolically, the way you learn in calculus,
- - Using forward propagation. This was the original way automatic differentiation was performed.
- - Using back propagation, the way deep learning frameworks do it. Backwards propagation tends to be more efficient when there is one computed value and many parameters.
-
+ - Using forward propagation, the way automatic differentiation was originally performed.
+ - Using back propagation, the way deep learning frameworks usually do it. Backwards propagation tends to be more efficient for computations where the number of computed values is small computed to the number of parameters.
+ 
 The equation we'll use is:
 $$f(x)=(x+a)(x+b).$$
-This is a function of $x$ with parameters $a$ and $b.$ we want to find $\frac{df}{da}$ and $\frac{df}{db}$ for a fixed $x$.
+This is a function of $x$ with parameters $a$ and $b.$ We want to find $\frac{df}{da}$ and $\frac{df}{db}$ for a fixed $x$.
 
 ## Symbolic
 
@@ -39,7 +39,7 @@ t4 = t0 + t3    # x + b
 t5 = t2 * t4    # (x + a) * (x + b)
 y = t5
 ```
-After each step, we also compute the derivative of the intermediate result with respect to $a$ and $b$ as relevant. We use `dt2_da` for $\frac{dt_2}{da}.$ To save space, for values such as $\frac{dt_0}{da}$ that are $0$ we omit `dt0_da` assuming it is $0$ in any use.
+Each $t_i$ could hold the numeric value at this point in the computation, or it could just be a handle to a representation of the computation, depending on the implementation. After each step, we also compute the derivative of the intermediate result with respect to $a$ and $b$ as relevant. We use `dt2_da` for $\frac{dt_2}{da}.$ To save space, for values such as $\frac{dt_0}{da}$ that are $0$ we omit `dt0_da` assuming it is $0$ in any use.
 
 ```python
 t0 = load('x')  # x
@@ -88,7 +88,7 @@ Next we let $\overline{dy}$ be $1$:
 ```python
 dy = 1
 ```
-Now we work backwards through the original computation. The derivative of each line will be of the form $dt_i=\sum_{j<i}> a_jdt_j$. For each term in the derivative, we add a computation
+Now we work backwards through the original computation. The derivative of each line will be of the form $dt_i=\sum_{j<i} a_jdt_j$. For each term in the derivative, we add a computation
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \overline{dt_j}\pluseq a_j\overline{dt_j},
@@ -111,11 +111,13 @@ dt1 += dt2  # x + b (dy/da)
 ```
 So $\frac{dy}{da}=x+b$ and $\frac{dy}{db}=x+a.$
 
-If you think it is a bit mysterious how backwards propagation ends up with the correct values, your intuition is correct. If is often explained as just being the chain rule, along with some vigorous hand waving. Of course the chain rule is involved, but it is more interesting than just the chain rule. A future page will explain how it works.
+If you think it is a bit mysterious how backwards propagation ends up with the correct values, your intuition is correct. If is often explained as just being the chain rule, along with some vigorous hand waving. Of course the chain rule is involved, but it is more interesting than just the chain rule. A future page will explain why it works.
 
 # Tensor derivatives
 
-For a scalar $t$, we treat $dt$ as a scalar. For a tensor $t$ we treat $dt$ as a tensor with the same shape. For non-negative integers, $I, J, \ldots$, $t[I,J, \ldots]$ designates a tensor of the given shape, while for $i\in I, j\in j, \ldots, t[i,j,\ldots]$ designates an element of the tensor. $t[i,J,\ldots]$ is a slice of the tensor.
+For a scalar $t$, we treat $dt$ as a scalar. For a tensor $t$ we treat $dt$ as a tensor with the same shape. For non-negative integers, $I, J, \ldots$, $t[I,J, \ldots]$ designates a tensor of the given shape, while for $i\in I, j\in j, \ldots, t[i,j,\ldots]$ designates an element of the tensor. 
+
+$t[i,J,\ldots]$ is a slice of the tensor.
 
 ## Vector addition
 
@@ -164,6 +166,8 @@ We can take this a step further by letting $I,J$ denote a partitioning of a shap
 We can even take this further by letting $I,J$ be a partitioning that carries axis positions. For example, $I$ could be the odd axes and $J$ could be the even axes, and they could even match different axes in different tensors. And with the axes carrying the position, $I,J$ and $J,I$ mean the same thing. Automatic differentiation doesn't care about axis order or how tensors are implemented. On the other hand, it is very important when implementing the operations.
 
 If $I$ is empty, we treat it as having one empty coordinate, so $I,J$ acts like $I$ and the coordinates in $I,J$ are the same as those in $J$. This is the same as how a tensor with no axes is a scalar.
+
+For coordinates outside of the shape, i.e. with an axis having a negative value or a value not less than the length in the shape for that axis, we assume the tensor is $0$. This is not necessary but it will simplify the description of some operations, such as convolution.
 
 ## Broadcast
 
@@ -436,18 +440,18 @@ $$
 
 ## Basic convolution
 
-The input $x[S_x,C_x]$ of a convolution has spatial axes $S_x$ and channel axes $C_x$. A kernel $k[S_k,C_x,C_y]$ has spatial axes $S_k$, input channels $C_x$ and output channels $C_y$. The number of axes in $S_x$ and $S_k$ must be the same, and the length of each axis in $S_k$ must be no greater than the corresponding axis in $S_x$. The kernel is positioned over every location in the input and produces $C_y$ channel outputs that are a linear combination of all the $C_x$ channel values in the input covered by the kernel.
+The input $x[S_x,C_x]$ of a convolution has spatial axes $S_x$ and channel axes $C_x$. A kernel $k[S_k,C_x,C_y]$ has spatial axes $S_k$, input channels $C_x$ and output channels $C_y$. The number of axes in $S_x$ and $S_k$ must be the same, and the length of each axis in $S_k$ must be no greater than the corresponding axis in $S_x$. The kernel is positioned over every location in the input with overlap (extended beyond the shape) and produces $C_y$ channel outputs that are a linear combination of all the $C_x$ channel values in the input covered by the kernel.
 
 $$\begin{aligned}
-y[S_y=S_x-S_k+1, C_y]&=\mathop{\mathtt{conv}}(x[S_x,C_x], k[S_k, C_x, C_y])\\\\
-y[s_y,c_y]&=\sum_{s_k \in S_k}\sum_{c_x\in C_x} x[s_y+s_k,c_x]k[s_k,c_x,c_y].
+y[S_y=S_x+S_k-1, C_y]&=\mathop{\mathtt{conv}}(x[S_x,C_x], k[S_k, C_x, C_y])\\\\
+y[s_y,c_y]&=\sum_{s_k \in S_k}\sum_{c_x\in C_x} x[s_y+s_k-S_k+1,c_x]k[s_k,c_x,c_y].
 \end{aligned}$$
 
 The derivative gives the forward propagation:
 $$
 \begin{aligned}
-dy[s_y,c_y]&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k,c_x]dk[s_k,c_x,c_y]+dx[s_y+s_k,c_x]k[s_k,c_x,c_y]\right)\\\\
-&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k,c_x]dk[s_k,c_x,c_y]\right)+\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left(dx[s_y+s_k,c_x]k[s_k,c_x,c_y]\right)\\\\
+dy[s_y,c_y]&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k-S_k+1,c_x]dk[s_k,c_x,c_y]+dx[s_y+s_k-S_k+1,c_x]k[s_k,c_x,c_y]\right)\\\\
+&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k-S_k+1,c_x]dk[s_k,c_x,c_y]\right)+\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left(dx[s_y+s_k-S_k+1,c_x]k[s_k,c_x,c_y]\right)\\\\
 dy[S_y,C_y]&=\mathop{\mathtt{conv}}(x[S_x,C_x], dk[S_k,C_x,C_y])+\mathop{\mathtt{conv}}(dx[S_x,C_x], k[S_k,C_x,C_y]).
 \end{aligned}
 $$
@@ -458,7 +462,7 @@ For $dk$, $x[s_y+s_k, c_x]$ will have $s_y$ take on all values in $S_y,$ so
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-dk[s_k,c_x,c_y]&\pluseq\sum_{s_y\in S_y} dy[s_y,c_y]x[s_y+s_k,c_x].
+dk[s_k,c_x,c_y]&\pluseq\sum_{s_y\in S_y} dy[s_y,c_y]x[s_y+s_k-S_k+1,c_x].
 \end{aligned}
 $$
 
@@ -467,21 +471,8 @@ $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
 dx[s_x,c_x]&\pluseq 
-\sum_{\begin{aligned}
-s_k&\in S_k\\\\
-s_y&\in S_y\\\\
-s_k+s_y&=s_x
-\end{aligned}}
-\sum_{c_y\in C_y} dy[s_y,c_y]k[s_k,c_x,c_y].
-\end{aligned}
-$$
-This is messy because for coordinates below S_k-1, we have fewer overlaps between $k$ and $x$. If we defined tensors to be $0$ outside of their valid coordinates, we can simplify to
-$$
-\newcommand{\pluseq}{\mathrel{{+}{=}}}
-\begin{aligned}
-dx[s_x,c_x]&\pluseq 
 \sum_{s_k\in S_k}
-\sum_{c_y\in C_y} dy[s_x-s_k,c_y]k[s_k,c_x,c_y].
+\sum_{c_y\in C_y} dy[s_x-s_k+S_k-1,c_y]k[s_k,c_x,c_y].
 \end{aligned}
 $$
 
