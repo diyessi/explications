@@ -440,16 +440,50 @@ The input $x[S_x,C_x]$ of a convolution has spatial axes $S_x$ and channel axes 
 
 $$\begin{aligned}
 y[S_y=S_x-S_k+1, C_y]&=\mathop{\mathtt{conv}}(x[S_x,C_x], k[S_k, C_x, C_y])\\\\
-y[s_y,c_y]&=\sum_{s \in S_k}\sum_{c\in C_x} x[s_y+s,c]k[s,c,c_y].
+y[s_y,c_y]&=\sum_{s_k \in S_k}\sum_{c_x\in C_x} x[s_y+s_k,c_x]k[s_k,c_x,c_y].
 \end{aligned}$$
 
 The derivative gives the forward propagation:
 $$
 \begin{aligned}
-dy[s_y,c_y]&=\sum_{s\in S_k}\sum_{c\in C_x}\left( x[s_y+s,c]dk[s,c,c_y]+dx[s_y+s,c]k[s,c,c_y]\right)\\\\
-&=\sum_{s\in S_k}\sum_{c\in C_x}\left( x[s_y+s,c]dk[s,c,c_y]\right)+\sum_{s\in S_k}\sum_{c\in C_x}\left(dx[s_y+s,c]k[s,c,c_y]\right)\\\\
+dy[s_y,c_y]&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k,c_x]dk[s_k,c_x,c_y]+dx[s_y+s_k,c_x]k[s_k,c_x,c_y]\right)\\\\
+&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k,c_x]dk[s_k,c_x,c_y]\right)+\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left(dx[s_y+s_k,c_x]k[s_k,c_x,c_y]\right)\\\\
 dy[S_y,C_y]&=\mathop{\mathtt{conv}}(x[S_x,C_x], dk[S_k,C_x,C_y])+\mathop{\mathtt{conv}}(dx[S_x,C_x], k[S_k,C_x,C_y]).
 \end{aligned}
 $$
+
+For backwards propagation we need to fix $dk[s_k,c_x,c_y]$ and $dx[s_x,c_x].$
+
+For $dk$, $x[s_y+s_k, c_x]$ will have $s_y$ take on all values in $S_y,$ so
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+dk[s_k,c_x,c_y]&\pluseq\sum_{s_y\in S_y} dy[s_y,c_y]x[s_y+s_k,c_x].
+\end{aligned}
+$$
+
+For $dx$,
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+dx[s_x,c_x]&\pluseq 
+\sum_{\begin{aligned}
+s_k&\in S_k\\\\
+s_y&\in S_y\\\\
+s_k+s_y&=s_x
+\end{aligned}}
+\sum_{c_y\in C_y} dy[s_y,c_y]k[s_k,c_x,c_y].
+\end{aligned}
+$$
+This is messy because for coordinates below S_k-1, we have fewer overlaps between $k$ and $x$. If we defined tensors to be $0$ outside of their valid coordinates, we can simplify to
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+dx[s_x,c_x]&\pluseq 
+\sum_{s_k\in S_k}
+\sum_{c_y\in C_y} dy[s_x-s_k,c_y]k[s_k,c_x,c_y].
+\end{aligned}
+$$
+
 
 ## Convolution with padding and stride
