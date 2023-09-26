@@ -1,6 +1,6 @@
 ---
 title: "Automatic Differentiation"
-date: 2023-09-25T14:53:04-07:00
+date: 2023-09-25T04:00:00-07:00
 math: true
 ---
 # Introduction
@@ -18,7 +18,7 @@ The equation we'll use is:
 $$f(x)=(x+a)(x+b).$$
 This is a function of $x$ with parameters $a$ and $b.$ We want to find $\frac{df}{da}$ and $\frac{df}{db}$ for a fixed $x$.
 
-## Symbolic
+## Symbolic differentiation
 
 Symbolically,
 $$\begin{align*}
