@@ -478,34 +478,28 @@ $$
 
 ## Convolution with the works
 
-The most general convolution has batch, stride, dilation, pads and groups.
+In the simple convolution we treated the input and kernel as though they were spatially infinite but zero outside of their valid coordinates and sized the output to contain only those elements that could be non-zero. This avoids messiness in back propagation near the edges, but some changes are needed for the deep learning definition.
 
-In the simple convolution we made the output shape cover all positions where the kernel and the input overlapped. In a padded convolution, we pad the input and align the initial kernel position with the padding, so our previous definition is like a padded convolution where the pre and post padding amount is one less than the kernel size. Since we assume tensors are $0$ outside of their valid coordinates, the padding just amounts to a shift of the output positions, so a slice of the output using the previous convolution definition would be equivalent.
-
-With dilation, the kernel is spatially dilated before being used in the convolution. With a stride, the convolution output is spatially strided. In a convolution implementation, the amount of computation can be reduced for both by not computing values left out by the stride and not multiplying by the $0$s due to the dilation.
+The most general convolution has batch, stride, dilation, pads and groups:
+$$y[N,S_y,G,C_y]=\mathop{\mathtt{conv}}(x[N,Sx,G,Cx], k[S_k,G,C_x,C_y],d,p_0,p_1,s).$$
 
 Grouped convolution is channel-specific. A channel-like group axis $G$ is added to the input, kernel, and output by reshaping $C_x, C_k,$ and $C_y$ by factoring out $G$. Thus, instead of the kernel having $S_kC_xC_y$ elements, it will have $S_kC_xC_y/G$ elements and each of the $G$ slices of the input can be convolved with the $G$ slices of the kernel in parallel to produce $G$ slices of output.
 
-Let's begin with the effects of stride, dilation and padding on $y$'s spatial shape. As with pad, we'll pre-pad with $p_0$ and post-pad with $p_1,$ so the size of padded input becomes $p_0+S_x+p_1.$
+Dilation is applied to the kernel $k$, giving it an effective spatial size of $d(S_k-1)+1.$
 
-When the kernel is at position $i$ it extends up to but not including $i+s_k$. Since the padded input goes up to but does not include $p_0+S_x+p_1,$ we want
-$$\begin{aligned}
-(S_y-1)+S_k&=p_0+S_x+p_1\\\\
-S_y&=p_0+S_x+p_1-S_k+1.
-\end{aligned}$$
-If $p_0=p_1=S_k-1$ then 
-$$\begin{aligned}
-S_y&=(S_k-1)+S_x+(S_k-1)-S_k+1\\\\
-&=S_x+S_k-1,
-\end{aligned}$$
-which agrees with the previous simple convolution.
+Padding is applied to the input $x$, giving it an effective spatial size of $p_0+S_x+p_1.$ The output is then sliced so that only the portion of the output where the dilated kernel completely overlaps the padded input is used. Thus, the slice begins at $d(S_k-1)$ inclusive, and ends at $p_0+S_x+p_1$, exclusive, for a size of $p_0+S_x+p_1-d(S_k-1).$ Finally, the sliced output is strided by $s$ to give a size of
+$$S_y=\left\lceil\frac{p_0+S_x+p_1-d(S_k-1)}{s}\right\rceil.$$
 
-Adding dilation $d$ stretches the effective kernel in the convolution from $S_k$ to $d(S_k-1)+1,$ so we have
-$$S_y=p_0+S_x+p_1-d(S_k-1).$$
+Rather than being explicitly specified, the padding is often specified as one of $\texttt{VALID}$, $\texttt{SAME\\_UPPER}$, or $\texttt{SAME\\_LOWER},$ which are used to compute $p_0$ and $p_1$ based on the other parameters.
 
-With a stride of $s$, we start with the output positions from $0$ to $p_0+S_x+p_1-d(S_k-1)-1$ and only take $0, s, 2s, \ldots$ which leaves us with
+For $\texttt{VALID},$ $p_0=p_1=0.$
+
+With the $\texttt{SAME}$ paddings, we want the output size to be the *same* as would be obtained by striding the input, i.e.
+$$S_y=\left\lceil\frac{S_x}{s}\right\rceil.$$
+Thus we want
 $$\begin{aligned}
-S_y-1&=\left\lfloor\frac{p_0+S_x+p_1-d(S_k-1)-1}{s}\right\rfloor\\\\
-S_y&=\left\lfloor\frac{p_0+S_x+p_1-d(S_k-1)-1}{s}\right\rfloor+1\\\\
-&=\left\lfloor\frac{p_0+S_x+p_1-d(S_k-1)+s-1}{s}\right\rfloor.
+\left\lceil\frac{S_x}{s}\right\rceil&=\left\lceil\frac{p_0+S_x+p_1-d(S_k-1)}{s}\right\rceil\\\\
+p_0+p_1&=d(S_k-1).
 \end{aligned}$$
+
+Padding is evenly deviced between $p_0$ and $p_1$, with the excess going to $p_0$ for $\texttt{SAME\\_LOWER}$ and $p_1$ for $\texttt{SAME\\_UPPER}.$
