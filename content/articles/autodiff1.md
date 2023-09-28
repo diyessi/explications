@@ -476,19 +476,71 @@ $$
 \end{aligned}
 $$
 
+## Grouped Convolution
+
+In a grouped convolution $C_x$ and $C_y$ are split into $G$ groups be reshaping. We can treat this as adding an axis $G$ to the input, kernel, and output.
+
+$$\begin{aligned}
+y[S_y=S_x+S_k-1, G, C_y]&=\mathop{\mathtt{conv}}(x[S_x,G, C_x], k[S_k, G, C_x, C_y])\\\\
+y[s_y,g, c_y]&=\sum_{s_k \in S_k}\sum_{c_x\in C_x} x[s_y+s_k-S_k+1,g, c_x]k[s_k,g, c_x,c_y].
+\end{aligned}$$
+Instead of the kernel having $S_k(GC_x)(GC_y)$ elements, it will have $S_kC_xC_yG$ elements and each of the $G$ slices of the input can be convolved with the $G$ slices of the kernel in parallel to produce $G$ slices of output.
+
+The derivative gives the forward propagation:
+$$
+\begin{aligned}
+dy[s_y,g,c_y]&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k-S_k+1,g,c_x]dk[s_k,g,c_x,c_y]+dx[s_y+s_k-S_k+1,g,c_x]k[s_k,g,c_x,c_y]\right)\\\\
+&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k-S_k+1,g,c_x]dk[s_k,g,c_x,c_y]\right)+\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left(dx[s_y+s_k-S_k+1,g,c_x]k[s_k,g,c_x,c_y]\right)\\\\
+dy[S_y,G,C_y]&=\mathop{\mathtt{conv}}(x[S_x,G,C_x], dk[S_k,G,C_x,C_y])+\mathop{\mathtt{conv}}(dx[S_x,G,C_x], k[S_k,G,C_x,C_y]).
+\end{aligned}
+$$
+
+For backwards propagation we need to fix $dk[s_k,g,c_x,c_y]$ and $dx[s_x,g,c_x].$
+
+For $dk$, $x[s_y+s_k,g,c_x]$ will have $s_y$ take on all values in $S_y,$ so
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+\overline{dk[s_k,g,c_x,c_y]}&\pluseq\sum_{s_y\in S_y} \overline{dy[s_y,g,c_y]}x[s_y+s_k-S_k+1,g,c_x].
+\end{aligned}
+$$
+
+For $dx$,
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+\overline{dx[s_x,g,c_x]}&\pluseq 
+\sum_{s_k\in S_k}
+\sum_{c_y\in C_y} \overline{dy[s_x-s_k+S_k-1,g,c_y]}k[s_k,g,c_x,c_y].
+\end{aligned}
+$$
+
 ## Convolution with the works
 
-In the simple convolution we treated the input and kernel as though they were spatially infinite but zero outside of their valid coordinates and sized the output to contain only those elements that could be non-zero. This avoids messiness in back propagation near the edges, but some changes are needed for the deep learning definition.
+In the simple grouped convolution we treated the input and kernel as though they were spatially infinite but zero outside of their valid coordinates and sized the output to contain only those elements that could be non-zero. This avoids messiness in back propagation near the edges, but some changes are needed for the deep learning definition.
 
 The most general convolution has batch, stride, dilation, pads and groups:
 $$y[N,S_y,G,C_y]=\mathop{\mathtt{conv}}(x[N,Sx,G,Cx], k[S_k,G,C_x,C_y],d,p_0,p_1,s).$$
 
-Grouped convolution is channel-specific. A channel-like group axis $G$ is added to the input, kernel, and output by reshaping $C_x, C_k,$ and $C_y$ by factoring out $G$. Thus, instead of the kernel having $S_kC_xC_y$ elements, it will have $S_kC_xC_y/G$ elements and each of the $G$ slices of the input can be convolved with the $G$ slices of the kernel in parallel to produce $G$ slices of output.
-
 Dilation is applied to the kernel $k$, giving it an effective spatial size of $d(S_k-1)+1.$
 
-Padding is applied to the input $x$, giving it an effective spatial size of $p_0+S_x+p_1.$ The output is then sliced so that only the portion of the output where the dilated kernel completely overlaps the padded input is used. Thus, the slice begins at $d(S_k-1)$ inclusive, and ends at $p_0+S_x+p_1$, exclusive, for a size of $p_0+S_x+p_1-d(S_k-1).$ Finally, the sliced output is strided by $s$ to give a size of
+Padding is applied to the input $x$, giving it an effective spatial size of $p_0+S_x+p_1.$ The padded input is convolved with the dilated kernel.
+
+The convolution output is then sliced so that only the portion of the output where the dilated kernel completely overlaps the padded input is kept. Thus, the slice begins at $d(S_k-1)$ inclusive, and ends at $p_0+S_x+p_1$, exclusive, for a size of $p_0+S_x+p_1-d(S_k-1).$
+
+The sliced output is strided by $s$ to give a size of
 $$S_y=\left\lceil\frac{p_0+S_x+p_1-d(S_k-1)}{s}\right\rceil.$$
+
+Putting the pieces together,
+$$\begin{aligned}
+k_d&=\mathop{\mathtt{dilate}}(k,d)\\\\
+x_p&=\mathop{\mathtt{pad}}(x,p_0, p_1)\\\\
+y_c&=\mathop{\mathtt{conv}}(x_p,k_d)\\\\
+y_s&=\mathop{\mathtt{slice}}(y_c, d(S_k-1), p_0+S_x+p_1)\\\\
+y&=\mathop{\mathtt{stride}}(y_s,s).
+\end{aligned}$$
+
+### Computing padding
 
 Rather than being explicitly specified, the padding is often specified as one of $\texttt{VALID}$, $\texttt{SAME\\_UPPER}$, or $\texttt{SAME\\_LOWER},$ which are used to compute $p_0$ and $p_1$ based on the other parameters.
 
@@ -503,3 +555,5 @@ p_0+p_1&=d(S_k-1).
 \end{aligned}$$
 
 Padding is evenly deviced between $p_0$ and $p_1$, with the excess going to $p_0$ for $\texttt{SAME\\_LOWER}$ and $p_1$ for $\texttt{SAME\\_UPPER}.$
+
+
