@@ -330,50 +330,50 @@ $$
 Padding adds $0$s before and after the elements of some axes. Let the axes to be padded be $P$, with $p_0, p_1$ being padding to be added before and after the $P$ axes in the input tensor.
 
 $$\begin{aligned}
-y[I=P+p_0+p_1]&=\mathop{\mathtt{pad}}(x[P], p_0, p_1)\\\\
-y[i]&=\begin{cases}
-x[i-p_0]&\text{if }p_0\le i < P+p_0\\\\
+y[N,I=P+p_0+p_1]&=\mathop{\mathtt{pad}}(x[N,P], p_0, p_1)\\\\
+y[n,i]&=\begin{cases}
+x[n,i-p_0]&\text{if }p_0\le i < P+p_0\\\\
 0&\text{otherwise}.
 \end{cases}
 \end{aligned}$$
 
 Slicing removes elements outside of a region:
 $$\begin{aligned}
-y[I=S-s_0-s_1]&=\mathop{\mathtt{slice}}(x[S], s_0, s_1)\\\\
-y[i]&=x[i+s_0]
+y[N,I=S-s_0-s_1]&=\mathop{\mathtt{slice}}(x[N,S], s_0, s_1)\\\\
+y[n,i]&=x[n,i+s_0]
 \end{aligned}$$
 
 The forward propagation for pad comes from the derivative:
 $$\begin{aligned}
-dy[i]&=\begin{cases}
-dx[i-p_0]&\text{if }p_0\le p < P+p_0\text{ for all axes}\\\\
+dy[n,i]&=\begin{cases}
+dx[n,i-p_0]&\text{if }p_0\le p < P+p_0\text{ for all axes}\\\\
 0&\text{otherwise}
 \end{cases}\\\\
-dy[I]&=\mathop{\mathtt{pad}}(dx[P], p_0, p_1).
+dy[n,I]&=\mathop{\mathtt{pad}}(dx[n,P], p_0, p_1).
 \end{aligned}$$
 
 The backward propagation for pad just needs to shift the coordinates:
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-\overline{dx[p]}&\pluseq dy[p-p_0]\\\\
-\overline{dx[P]}&\pluseq \mathop{\mathtt{slice}}(\overline{dy[I]}, p_0, p_1).
+\overline{dx[n,p]}&\pluseq dy[n,p-p_0]\\\\
+\overline{dx[N,P]}&\pluseq \mathop{\mathtt{slice}}(\overline{dy[N,I]}, p_0, p_1).
 \end{aligned}
 $$
 
 For slice, the forward propagation is:
 $$
 \begin{aligned}
-dy[i]&= dx[i+s_0]\\\\
-dy[I]&= \mathop{\mathtt{slice}}(dx[S],s_0,s_1)
+dy[n,i]&= dx[n,i+s_0]\\\\
+dy[N,I]&= \mathop{\mathtt{slice}}(dx[N,S],s_0,s_1)
 \end{aligned}
 $$
 and the backwards propagation is:
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-\overline{dx[i+s_0]}&\pluseq \overline{dy[i]}\\\\
-\overline{dx[S]}&\pluseq \mathop{\mathtt{pad}}(\overline{dy[I]},s_0,s_1).
+\overline{dx[n,i+s_0]}&\pluseq \overline{dy[n,i]}\\\\
+\overline{dx[N,S]}&\pluseq \mathop{\mathtt{pad}}(\overline{dy[N,I]},s_0,s_1).
 \end{aligned}$$
 
 ## Simple dilation and striding
@@ -381,49 +381,49 @@ $$
 Dilation interleaves elements of the input tensor with a zero background. The dilation $d$ is the spacing of elements from the input tensor, so each element has $d-1$ $0$s between it and the next element on each axis.
 
 $$\begin{aligned}
-y[I=d(D-1)+1] &= \mathop{\mathtt{dilate}}(x[D], d)\\\\
-y[i] &= \begin{cases}
-x\left[\left\lfloor\frac{p}{d}\right\rfloor\right]&\text{if }p \bmod d = 0\text{ for all axes}\\\\
+y[N,I=d(D-1)+1] &= \mathop{\mathtt{dilate}}(x[N,D], d)\\\\
+y[n,i] &= \begin{cases}
+x\left[n,\left\lfloor\frac{p}{d}\right\rfloor\right]&\text{if }p \bmod d = 0\text{ for all axes}\\\\
 0&\text{otherwise}.
 \end{cases}
 \end{aligned}$$
 
 Strides are the opposite of dilation; they select every $s$th element from the input.
 $$\begin{aligned}
-y\left[I=\left\lceil \frac{S}{s}\right\rceil\right] &= \mathop{\mathtt{stride}}(x[S], s)\\\\
-y[i] &= x[is].
+y\left[N,I=\left\lceil \frac{S}{s}\right\rceil\right] &= \mathop{\mathtt{stride}}(x[N,S], s)\\\\
+y[n,i] &= x[n,is].
 \end{aligned}$$
 
 For forward propagation of dilation,
 $$\begin{aligned}
-dy[i]&=\begin{cases}
-dx\left[\left\lfloor\frac{p}{d}\right\rfloor\right]&\text{if }p \bmod d = 0\text{ for all axes}\\\\
+dy[n,i]&=\begin{cases}
+dx\left[n,\left\lfloor\frac{p}{d}\right\rfloor\right]&\text{if }p \bmod d = 0\text{ for all axes}\\\\
 0&\text{otherwise}.
 \end{cases}\\\\
-dy[I]&=\mathop{\mathtt{dilate}}(dx[D],d).
+dy[N,I]&=\mathop{\mathtt{dilate}}(dx[N,D],d).
 \end{aligned}$$
 
 For backward propagation of dilation,
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-\overline{dx[i]}&\pluseq\overline{dy[di]}\\\\
-\overline{dx[I]}&\pluseq\mathop{\mathtt{stride}}(\overline{dy[I]},d).
+\overline{dx[n,i]}&\pluseq\overline{dy[n,di]}\\\\
+\overline{dx[N,I]}&\pluseq\mathop{\mathtt{stride}}(\overline{dy[N,I]},d).
 \end{aligned}
 $$
 
 For forward propagation of stride,
 $$\begin{aligned}
-dy[i]&=dx[is]\\\\
-dy[I]&=\mathop{\mathtt{stride}}(dx[S],s).
+dy[n,i]&=dx[n,is]\\\\
+dy[N,I]&=\mathop{\mathtt{stride}}(dx[N,S],s).
 \end{aligned}$$
 
 For backward propagation of stride,
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-\overline{dx[is]}&\pluseq \overline{dy[i]}\\\\
-\overline{dx[S]}&\pluseq \mathop{\mathtt{dilate}}(\overline{dy[I]}, s).
+\overline{dx[n,is]}&\pluseq \overline{dy[n,i]}\\\\
+\overline{dx[N,S]}&\pluseq \mathop{\mathtt{dilate}}(\overline{dy[N,I]}, s).
 \end{aligned}$$
 The first form is more efficient since it avoids adding many $0$s.
 
@@ -433,36 +433,36 @@ Slice is often combined with a stride. Dilation isn't combined with a pad, but i
 
 $$
 \begin{aligned}
-\mathop{\mathtt{slice}}(x[S],s_0,s_1,s_2) &= \mathop{\mathtt{stride}}(\mathop{\mathtt{slice}}(x[S],s_0, s_1),s_2)\\\\
-\mathop{\mathtt{dilate}}(x[D],d,p_0,p_1)&= \mathop{\mathtt{pad}}(\mathop{\mathtt{dilate}}(x[D], d), p_0, p_1).
+\mathop{\mathtt{slice}}(x[N,S],s_0,s_1,s_2) &= \mathop{\mathtt{stride}}(\mathop{\mathtt{slice}}(x[N,S],s_0, s_1),s_2)\\\\
+\mathop{\mathtt{dilate}}(x[N,D],d,p_0,p_1)&= \mathop{\mathtt{pad}}(\mathop{\mathtt{dilate}}(x[N,D], d), p_0, p_1).
 \end{aligned}
 $$
 
 ## Basic convolution
 
-The input $x[S_x,C_x]$ of a convolution has spatial axes $S_x$ and channel axes $C_x$. A kernel $k[S_k,C_x,C_y]$ has spatial axes $S_k$, input channels $C_x$ and output channels $C_y$. The number of axes in $S_x$ and $S_k$ must be the same, and the length of each axis in $S_k$ must be no greater than the corresponding axis in $S_x$. The kernel is positioned over every location in the input with overlap (extended beyond the shape) and produces $C_y$ channel outputs that are a linear combination of all the $C_x$ channel values in the input covered by the kernel.
+The input $x[N,S_x,C_x]$ of a convolution has spatial axes $S_x$ and channel axes $C_x$. A kernel $k[S_k,C_x,C_y]$ has spatial axes $S_k$, input channels $C_x$ and output channels $C_y$. The number of axes in $S_x$ and $S_k$ must be the same, and the length of each axis in $S_k$ must be no greater than the corresponding axis in $S_x$. The kernel is positioned over every location in the input with overlap (extended beyond the shape) and produces $C_y$ channel outputs that are a linear combination of all the $C_x$ channel values in the input covered by the kernel.
 
 $$\begin{aligned}
-y[S_y=S_x+S_k-1, C_y]&=\mathop{\mathtt{conv}}(x[S_x,C_x], k[S_k, C_x, C_y])\\\\
-y[s_y,c_y]&=\sum_{s_k \in S_k}\sum_{c_x\in C_x} x[s_y+s_k-S_k+1,c_x]k[s_k,c_x,c_y].
+y[N,S_y=S_x+S_k-1, C_y]&=\mathop{\mathtt{conv}}(x[N,S_x,C_x], k[S_k, C_x, C_y])\\\\
+y[n,s_y,c_y]&=\sum_{s_k \in S_k}\sum_{c_x\in C_x} x[n,s_y+s_k-S_k+1,c_x]k[s_k,c_x,c_y].
 \end{aligned}$$
 
 The derivative gives the forward propagation:
 $$
 \begin{aligned}
-dy[s_y,c_y]&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k-S_k+1,c_x]dk[s_k,c_x,c_y]+dx[s_y+s_k-S_k+1,c_x]k[s_k,c_x,c_y]\right)\\\\
-&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k-S_k+1,c_x]dk[s_k,c_x,c_y]\right)+\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left(dx[s_y+s_k-S_k+1,c_x]k[s_k,c_x,c_y]\right)\\\\
-dy[S_y,C_y]&=\mathop{\mathtt{conv}}(x[S_x,C_x], dk[S_k,C_x,C_y])+\mathop{\mathtt{conv}}(dx[S_x,C_x], k[S_k,C_x,C_y]).
+dy[n,s_y,c_y]&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[n,s_y+s_k-S_k+1,c_x]dk[s_k,c_x,c_y]+dx[n,s_y+s_k-S_k+1,c_x]k[s_k,c_x,c_y]\right)\\\\
+&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[n,s_y+s_k-S_k+1,c_x]dk[s_k,c_x,c_y]\right)+\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left(dx[n,s_y+s_k-S_k+1,c_x]k[s_k,c_x,c_y]\right)\\\\
+dy[N,S_y,C_y]&=\mathop{\mathtt{conv}}(x[N,S_x,C_x], dk[S_k,C_x,C_y])+\mathop{\mathtt{conv}}(dx[N,S_x,C_x], k[S_k,C_x,C_y]).
 \end{aligned}
 $$
 
-For backwards propagation we need to fix $dk[s_k,c_x,c_y]$ and $dx[s_x,c_x].$
+For backwards propagation we need to fix $dk[s_k,c_x,c_y]$ and $dx[n,s_x,c_x].$
 
 For $dk$, $x[s_y+s_k, c_x]$ will have $s_y$ take on all values in $S_y,$ so
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-\overline{dk[s_k,c_x,c_y]}&\pluseq\sum_{s_y\in S_y} \overline{dy[s_y,c_y]}x[s_y+s_k-S_k+1,c_x].
+\overline{dk[s_k,c_x,c_y]}&\pluseq\sum_{n\in N}\sum_{s_y\in S_y} \overline{dy[n,s_y,c_y]}x[n,s_y+s_k-S_k+1,c_x].
 \end{aligned}
 $$
 
@@ -470,9 +470,9 @@ For $dx$,
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-\overline{dx[s_x,c_x]}&\pluseq 
+\overline{dx[n,s_x,c_x]}&\pluseq 
 \sum_{s_k\in S_k}
-\sum_{c_y\in C_y} \overline{dy[s_x-s_k+S_k-1,c_y]}k[s_k,c_x,c_y].
+\sum_{c_y\in C_y} \overline{dy[n,s_x-s_k+S_k-1,c_y]}k[s_k,c_x,c_y].
 \end{aligned}
 $$
 
@@ -481,27 +481,27 @@ $$
 In a grouped convolution $C_x$ and $C_y$ are split into $G$ groups be reshaping. We can treat this as adding an axis $G$ to the input, kernel, and output.
 
 $$\begin{aligned}
-y[S_y=S_x+S_k-1, G, C_y]&=\mathop{\mathtt{conv}}(x[S_x,G, C_x], k[S_k, G, C_x, C_y])\\\\
-y[s_y,g, c_y]&=\sum_{s_k \in S_k}\sum_{c_x\in C_x} x[s_y+s_k-S_k+1,g, c_x]k[s_k,g, c_x,c_y].
+y[N,S_y=S_x+S_k-1, G, C_y]&=\mathop{\mathtt{conv}}(x[N,S_x,G, C_x], k[S_k, G, C_x, C_y])\\\\
+y[n,s_y,g, c_y]&=\sum_{s_k \in S_k}\sum_{c_x\in C_x} x[n,s_y+s_k-S_k+1,g, c_x]k[s_k,g, c_x,c_y].
 \end{aligned}$$
 Instead of the kernel having $S_k(GC_x)(GC_y)$ elements, it will have $S_kC_xC_yG$ elements and each of the $G$ slices of the input can be convolved with the $G$ slices of the kernel in parallel to produce $G$ slices of output.
 
 The derivative gives the forward propagation:
 $$
 \begin{aligned}
-dy[s_y,g,c_y]&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k-S_k+1,g,c_x]dk[s_k,g,c_x,c_y]+dx[s_y+s_k-S_k+1,g,c_x]k[s_k,g,c_x,c_y]\right)\\\\
-&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[s_y+s_k-S_k+1,g,c_x]dk[s_k,g,c_x,c_y]\right)+\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left(dx[s_y+s_k-S_k+1,g,c_x]k[s_k,g,c_x,c_y]\right)\\\\
-dy[S_y,G,C_y]&=\mathop{\mathtt{conv}}(x[S_x,G,C_x], dk[S_k,G,C_x,C_y])+\mathop{\mathtt{conv}}(dx[S_x,G,C_x], k[S_k,G,C_x,C_y]).
+dy[n,s_y,g,c_y]&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[n,s_y+s_k-S_k+1,g,c_x]dk[s_k,g,c_x,c_y]+dx[n,s_y+s_k-S_k+1,g,c_x]k[s_k,g,c_x,c_y]\right)\\\\
+&=\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left( x[n,s_y+s_k-S_k+1,g,c_x]dk[s_k,g,c_x,c_y]\right)+\sum_{s_k\in S_k}\sum_{c_x\in C_x}\left(dx[n,s_y+s_k-S_k+1,g,c_x]k[s_k,g,c_x,c_y]\right)\\\\
+dy[N,S_y,G,C_y]&=\mathop{\mathtt{conv}}(x[N,S_x,G,C_x], dk[S_k,G,C_x,C_y])+\mathop{\mathtt{conv}}(dx[N,S_x,G,C_x], k[S_k,G,C_x,C_y]).
 \end{aligned}
 $$
 
-For backwards propagation we need to fix $dk[s_k,g,c_x,c_y]$ and $dx[s_x,g,c_x].$
+For backwards propagation we need to fix $dk[s_k,g,c_x,c_y]$ and $dx[n,s_x,g,c_x].$
 
-For $dk$, $x[s_y+s_k,g,c_x]$ will have $s_y$ take on all values in $S_y,$ so
+For $dk$, $x[n,s_y+s_k,g,c_x]$ will have $s_y$ take on all values in $S_y,$ so
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-\overline{dk[s_k,g,c_x,c_y]}&\pluseq\sum_{s_y\in S_y} \overline{dy[s_y,g,c_y]}x[s_y+s_k-S_k+1,g,c_x].
+\overline{dk[s_k,g,c_x,c_y]}&\pluseq\sum_{n\in N}\sum_{s_y\in S_y} \overline{dy[n,s_y,g,c_y]}x[n,s_y+s_k-S_k+1,g,c_x].
 \end{aligned}
 $$
 
@@ -509,9 +509,9 @@ For $dx$,
 $$
 \newcommand{\pluseq}{\mathrel{{+}{=}}}
 \begin{aligned}
-\overline{dx[s_x,g,c_x]}&\pluseq 
+\overline{dx[n,s_x,g,c_x]}&\pluseq 
 \sum_{s_k\in S_k}
-\sum_{c_y\in C_y} \overline{dy[s_x-s_k+S_k-1,g,c_y]}k[s_k,g,c_x,c_y].
+\sum_{c_y\in C_y} \overline{dy[n,s_x-s_k+S_k-1,g,c_y]}k[s_k,g,c_x,c_y].
 \end{aligned}
 $$
 
