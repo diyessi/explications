@@ -155,6 +155,67 @@ $$
 \overline{dx_i}\pluseq \frac{\partial f(x_0, x_1, \ldots)}{\partial x_i}\\,\overline{dy}
 $$
 
+## Relu
+
+$\mathop{\mathtt{relu}}$ is a unary elementise operation with a condition in it:
+$$\begin{aligned}
+Y[I]&=\mathop{\mathtt{relu}}(X[I])\\\\
+y[i]&=\begin{cases}
+x[i]&\text{if }x[i]\ge 0\\\\
+0&\text{otherwise.}
+\end{cases}
+\end{aligned}$$
+Because of the conditional in the definition, the derivative will also have a conditional. For forward propagation,
+$$dy[i]=\begin{cases}
+1&\text{if }x[i]\ge 0\\\\
+0&\text{otherwise.}
+\end{cases}
+$$
+Mathematically, the derivative is not defined at 0, so the forward propagation would be $\mathtt{NaN}$ which would cause problems during training. Picking an arbitrary value will cause $x[i]$ to move away from $0$.
+
+For backwards propagation,
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\overline{dx[i]}\pluseq\begin{cases}
+\overline{dy[i]}&\text{if }x[i]\ge 0\\\\
+0&\text{otherwise.}
+\end{cases}
+$$
+
+## Max
+
+$\mathop{\mathtt{max}}$ is a binary elementise operation with a condition in it:
+$$\begin{aligned}
+Y[I]&=\mathop{\mathtt{max}}(X_0[I], X_1[I])\\\\
+y[i]&=\begin{cases}
+x_0[i]&\text{if }x_0[i]\ge x_1[i]\\\\
+x_1[i]&\text{otherwise.}
+\end{cases}
+\end{aligned}$$
+Because of the conditional in the definition, the derivative will also have a conditional. For forward propagation,
+$$dy[i]=\begin{cases}
+dx_0[i]&\text{if }x_0[i]\ge x_1[i]\\\\
+dx_1[i]&\text{otherwise.}
+\end{cases}
+$$
+Some people worry about the case where $x_0[i]=x_1[i].$ Mathematically, when $x_0[i]=x_1[i],$ the derivative is only defined when $dx_0[i]=dx_1[i]$ so the "correct" answer would be $\mathtt{NaN}$. By arbitrarily picking one, training will adjust $x_0[i]$, breaking the tie.
+
+and for backwards propagation,
+$$
+\newcommand{\pluseq}{\mathrel{{+}{=}}}
+\begin{aligned}
+\overline{dx_0[i]}&\pluseq\begin{cases}
+\overline{dy[i]}&\text{if }x_0[i]\ge x_1[i]\\\\
+0&\text{otherwise.}
+\end{cases}\\\\
+\overline{dx_1[i]}&\pluseq\begin{cases}
+\overline{dy[i]}&\text{if }x_0[i] < x_1[i]\\\\
+0&\text{otherwise.}
+\end{cases}
+\end{aligned}
+$$
+
+
 ## General coordinates
 
 Everything above in vector addition and elementwise operations can be extended to matrices by changing each '$I$' to '$I,J$' and changing each '$i$' to '$i,j$'. The process could then be repeated for $I,J,K,$ etc.
@@ -526,7 +587,7 @@ Dilation is applied to the kernel $k$, giving it an effective spatial size of $d
 
 Padding is applied to the input $x$, giving it an effective spatial size of $p_0+S_x+p_1.$ The padded input is convolved with the dilated kernel.
 
-The convolution output is then sliced so that only the portion of the output where the dilated kernel completely overlaps the padded input is kept. Thus, the slice begins at $d(S_k-1)$ inclusive, and ends at $p_0+S_x+p_1$, exclusive, for a size of $p_0+S_x+p_1-d(S_k-1).$
+The convolution output is then sliced so that only the portion of the output where the dilated kernel completely overlaps the padded input is kept. Thus, the slice begins at $d(S_k-1)$ inclusive (overlap of 1), and ends at $p_0+S_x+p_1$, exclusive, for a size of $p_0+S_x+p_1-d(S_k-1).$
 
 The sliced output is strided by $s$ to give a size of
 $$S_y=\left\lceil\frac{p_0+S_x+p_1-d(S_k-1)}{s}\right\rceil.$$
@@ -549,11 +610,47 @@ For $\texttt{VALID},$ $p_0=p_1=0.$
 With the $\texttt{SAME}$ paddings, we want the output size to be the *same* as would be obtained by striding the input, i.e.
 $$S_y=\left\lceil\frac{S_x}{s}\right\rceil.$$
 Thus we want
-$$\begin{aligned}
-\left\lceil\frac{S_x}{s}\right\rceil&=\left\lceil\frac{p_0+S_x+p_1-d(S_k-1)}{s}\right\rceil\\\\
-p_0+p_1&=d(S_k-1).
-\end{aligned}$$
+$$
+\left\lceil\frac{S_x}{s}\right\rceil=\left\lceil\frac{p_0+S_x+p_1-d(S_k-1)}{s}\right\rceil
+$$
+The simplest solution would be
+$$p_0+p_1=d(S_k-1).$$
 
-Padding is evenly deviced between $p_0$ and $p_1$, with the excess going to $p_0$ for $\texttt{SAME\\_LOWER}$ and $p_1$ for $\texttt{SAME\\_UPPER}.$
+However, $\texttt{SAME}$ padding is defined to use the minimal non-negative padding needed to achieve the output shape. For example, if $S_x=40$ and $s=4$ then $S_y=10$. If $d=1$ and $S_k=5$ then letting $p_0+p_1=4$ gives $S_y=10$ as desired. However, since $\lceil37/4\rceil=10$ we could use the smaller $p_0+p_1=1$ and still get $S_y=10.$
+
+#### Ceiling, floor and remainder
+
+The remainder can be defined as
+$$S_x \\% s= S_x-s\left\lfloor \frac{S_x}{s}\right\rfloor.$$
+so
+$$
+\left\lfloor\frac{S_x}{s}\right\rfloor=\frac{S_x-S_x\\% s}{s}
+$$
+
+The ceiling and floor are related as
+$$\begin{aligned}
+\left\lceil\frac{S_x}{s}\right\rceil&=\left\lfloor\frac{S_x+s-1}{s}\right\rfloor\\\\
+&=\frac{S_x+s-1-(S_x+s-1)\\%s}{s}\\\\
+&=\frac{s+S_x-1-(S_x-1)\\%s}{s}.
+\end{aligned}$$
+For a given $S_x$, what is the maximum $a$ where
+$$\left\lceil \frac{S_x}{s}\right\rceil=\left\lceil \frac{S_x-a}{s}\right\rceil?$$
+In other words, what is the maximum $a$ where
+$$
+\frac{s+S_x-1-(S_x-1)\\%s}{s}=\frac{s+S_x-a-1-(S_x-a-1)\\%s}{s}?
+$$
+We can simplify to what is the largest $a$ where
+$$
+(S_x-1)\\%s=(S_x-1-a)\\%s+a?
+$$
+As long as $(S_x-a-1)\\% s$ decreases by 1 when $a$ increases by 1, the two sides remain equal. When $S_x-a-1$ first becomes a multiple of $s$, this no longer happens, i.e. $a=(S_x-1)\\%s.$
+
+Going back to the original problem, we want
+$$p_0+p_1=d(S_k-1)-(S_x-1)\\%s.$$
+Although it wouldn't make sense to have the stride be larger than the filter size, the additional constraint is added that the padding must be non-negative, so the padding is adjusted to
+$$p_0+p_1=\max(d(S_k-1)-(S_x-1)\\%s, 0).$$
+
+Padding is evenly divided between $p_0$ and $p_1$, with the excess going to $p_0$ for $\texttt{SAME\\_LOWER}$ and $p_1$ for $\texttt{SAME\\_UPPER}.$
+
 
 
