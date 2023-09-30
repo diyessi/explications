@@ -1,6 +1,6 @@
 ---
 title: "Automatic Differentiation"
-date: 2023-09-25T04:00:00-07:00
+date: 2023-09-30T04:00:00-07:00
 math: true
 ---
 # Introduction
