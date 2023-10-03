@@ -1,6 +1,6 @@
 ---
 title: "Automatic Differentiation"
-date: 2023-09-30T04:00:00-07:00
+date: 2023-10-03T04:00:00-07:00
 math: true
 ---
 # Introduction
@@ -607,50 +607,47 @@ Rather than being explicitly specified, the padding is often specified as one of
 
 For $\texttt{VALID},$ $p_0=p_1=0.$
 
-With the $\texttt{SAME}$ paddings, we want the output size to be the *same* as would be obtained by striding the input, i.e.
+With the $\texttt{SAME}$ paddings, we want the output size to be the *same* as would be obtained by striding the input,
 $$S_y=\left\lceil\frac{S_x}{s}\right\rceil.$$
-Thus we want
+At the same time, we want to minize $p=p_0+p_1$ so we do not dilute the information in the input with excess $0$s. Thus we want the minimal $p$ where
+$$ 
+\left\lceil\frac{S_x}{s}\right\rceil=\left\lceil\frac{p+S_x-d(S_k-1)}{s}\right\rceil.
 $$
-\left\lceil\frac{S_x}{s}\right\rceil=\left\lceil\frac{p_0+S_x+p_1-d(S_k-1)}{s}\right\rceil
+
+The floor is easier to work with than the ceiling. We can use the identity
 $$
-The simplest solution would be
-$$p_0+p_1=d(S_k-1).$$
-
-However, $\texttt{SAME}$ padding is defined to use the minimal non-negative padding needed to achieve the output shape. For example, if $S_x=40$ and $s=4$ then $S_y=10$. If $d=1$ and $S_k=5$ then letting $p_0+p_1=4$ gives $S_y=10$ as desired. However, since $\lceil37/4\rceil=10$ we could use the smaller $p_0+p_1=1$ and still get $S_y=10.$
-
-#### Ceiling, floor and remainder
-
-The remainder can be defined as
-$$S_x \\% s= S_x-s\left\lfloor \frac{S_x}{s}\right\rfloor.$$
+\left\lfloor\frac{x}{s}\right\rfloor=\left\lfloor\frac{x-1+s}{s}\right\rfloor
+$$
+to rewrite as
+$$ 
+\left\lfloor\frac{S_x-1+s}{s}\right\rceil=\left\lfloor\frac{p+S_x-1-d(S_k-1)+s}{s}\right\rfloor.
+$$
+Now let
+$$
+q=\frac{(S_x-1)-(S_x-1)\\%s}{s}.
+$$
 so
-$$
-\left\lfloor\frac{S_x}{s}\right\rfloor=\frac{S_x-S_x\\% s}{s}
-$$
+$$S_X-1=qs+(S_x-1)\\%s$$
+and $0\le (S_x-1)\\%s<s.$
 
-The ceiling and floor are related as
-$$\begin{aligned}
-\left\lceil\frac{S_x}{s}\right\rceil&=\left\lfloor\frac{S_x+s-1}{s}\right\rfloor\\\\
-&=\frac{S_x+s-1-(S_x+s-1)\\%s}{s}\\\\
-&=\frac{s+S_x-1-(S_x-1)\\%s}{s}.
-\end{aligned}$$
-For a given $S_x$, what is the maximum $a$ where
-$$\left\lceil \frac{S_x}{s}\right\rceil=\left\lceil \frac{S_x-a}{s}\right\rceil?$$
-In other words, what is the maximum $a$ where
+Substituting we get
 $$
-\frac{s+S_x-1-(S_x-1)\\%s}{s}=\frac{s+S_x-a-1-(S_x-a-1)\\%s}{s}?
+\begin{aligned}
+\left\lfloor\frac{qs+(S_x-1)\\%s+s}{s}\right\rfloor&=\left\lfloor\frac{p+qs+(S_x-1)\\%s-d(S_k-1)+s}{s}\right\rfloor\\\\
+\left\lfloor q+1+\frac{(S_x-1)\\%s}{s}\right\rfloor&=\left\lfloor q+1+\frac{p+(S_x-1)\\%s-d(S_k-1)}{s}\right\rfloor\\\\
+q+1&=\left\lfloor q+1+\frac{p+(S_x-1)\\%s-d(S_k-1)}{s}\right\rfloor.
+\end{aligned}
 $$
-We can simplify to what is the largest $a$ where
+For this to be true we need
+$$0 \le p+(S_x-1)\\%s-d(S_k-1) < s.$$
+Since we are minimizing $p$, we want
 $$
-(S_x-1)\\%s=(S_x-1-a)\\%s+a?
+\begin{aligned}
+0&=p+(S_x-1)\\%s-d(S_k-1)\\\\
+p&=d(S_k-1)-(S_x-1)\\%s.
+\end{aligned}
 $$
-As long as $(S_x-a-1)\\% s$ decreases by 1 when $a$ increases by 1, the two sides remain equal. When $S_x-a-1$ first becomes a multiple of $s$, this no longer happens, i.e. $a=(S_x-1)\\%s.$
-
-Going back to the original problem, we want
-$$p_0+p_1=d(S_k-1)-(S_x-1)\\%s.$$
-Although it wouldn't make sense to have the stride be larger than the filter size, the additional constraint is added that the padding must be non-negative, so the padding is adjusted to
-$$p_0+p_1=\max(d(S_k-1)-(S_x-1)\\%s, 0).$$
+It would not make sense for the effective filter size to not cover the stride since input would be thrown away. But it would make even less sense to throw even more input away with negative padding, so the actual value used is
+$$p_0+p_1=\max(0, d(S_k-1)-(S_x-1)\\%s).$$
 
 Padding is evenly divided between $p_0$ and $p_1$, with the excess going to $p_0$ for $\texttt{SAME\\_LOWER}$ and $p_1$ for $\texttt{SAME\\_UPPER}.$
-
-
-
