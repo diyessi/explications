@@ -1,4 +1,0 @@
-baseURL = 'https://diyessi.github.io/explications/'
-languageCode = 'en-us'
-title = 'Explications'
-theme = ["github.com/theNewDynamic/gohugo-theme-ananke"]

@@ -1,0 +1,27 @@
+baseURL: https://diyessi.github.io/explications/
+languageCode: en-us
+title: Explications
+#theme: ["github.com/theNewDynamic/gohugo-theme-ananke"]
+theme: hugo-flex
+
+params:
+  width: 52rem
+  math: true
+
+markup:
+  goldmark:
+    extensions:
+      passthrough:
+        enable: true
+        delimiters:
+          block: [['\[', '\]'], ['$$', '$$']]
+          inline: [['\(', '\)']]
+
+menu:
+  main:
+    - name: About
+      pageRef: /about
+      weight: 1
+    - name: Articles
+      pageRef: /articles
+      weight: 2
