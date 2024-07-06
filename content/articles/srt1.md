@@ -4,7 +4,7 @@ date: 2024-03-21T20:41:38-07:00
 math: true
 draft: true
 ---
-# IBM 704 Square Root
+# IBM 704 SHARE Square Root
 
 We describe the origins and execution of an IBM 704 floating point routine from the SHARE library that calculates \(y=\sqrt{x}\).
 
@@ -79,7 +79,7 @@ B4 MI SRT1 02-06-58 0399         SY 0045
 ```
 # Understanding the source
 
-The source is easily recognized as being written in an assembly language. The assembler is [SHARE Assembler Program (SAP)](https://sky-visions.com/ibm/704/uasap.pdf#page=2), written by [Roy Nutt](https://history.computer.org/pioneers/nutt.html). Each line corresponds to one 80 column IBM punched card. The punched card character set and the closely related six bit BCD encoding is limited to uppercase letters and some symbols. Character positions, numbered from 1 to 80, are called columns, not because of the columns formed in the source listing, but because of the column of punched holes that encodes the character on a card. Only columns 1 through 72 can be read by the IBM 709 but could be read if the cards were transferred to tape.
+The source is easily recognized as being written in an assembly language. The assembler is [SHARE Assembler Program (SAP)](https://sky-visions.com/ibm/704/uasap.pdf#page=2), written by [Roy Nutt](https://history.computer.org/pioneers/nutt.html). Each line corresponds to one 80 column IBM punched card. The punched card character set and the closely related six bit BCD encoding is limited to uppercase letters and some symbols. Character positions, numbered from 1 to 80, are called columns, not because of the columns formed in the source listing, but because of the column of punched holes that encodes the character on a card. Only columns 1 through 72 can be read by the IBM 704 but could be read if the cards were transferred to tape.
 
 Columns 8 through 10 contain a three character operation which determine the syntax for the line.
 
@@ -98,7 +98,7 @@ For the purposes of understanding the `SQRT` implementation, IBM 704 addresses a
 Two registers are used for arithmetic operations:
  - `AC` is a 38 bit *accumulator* register with bits `S`, `Q`, `P`, `1-35` from high to low. The `Q` and `P` bits extend the arithmetic range available for some intermediate results. When `AC` is written to memory, the `Q` and `P` bits are not written to memory, and when memory is written to `AC`, `Q` and `P` will be 0.
  - `MQ` is a 36 bit *multiplier quotient* register
-Some instructions treat the pair of `AC` and `MQ` similar to a wide register.
+Some operations treat the pair of `AC` and `MQ` similar to a wide register.
 
 ## Linkage for SQRT
 
@@ -116,11 +116,11 @@ Programs were organized somewhat differently than they are today. There was no c
 
 One way this was done was to have a user of a subroutine first modify instructions in the subroutine to specify the proper return locations and addresses and then branch to the subroutine. Exit points in the subroutine would then be branches to the part of the program that was supposed to be executed next.
 
-The 704 provides a simpler mechanism. There are three address-sized *index* registers, 1, 2, and 4. Most instructions have a three bit *tag* field which specifies how an index value is read from/written to the index registers. For reading, the specified register contents are ORed, while for writing the specified index registers are set. When the tag is 0 for a read, the index value is 0, and for a write no index register is written. An *indexable* operation computes its effective address by subtracting the index value specified by its tag from its address operand.
+The 704 provides a simpler mechanism. There are three address-sized *index* registers, 1, 2, and 4. Most operations have a three bit *tag* field which specifies how an index value is read from/written to the index registers. For reading, the specified register contents are ORed, while for writing the specified index registers are set. When the tag is 0 for a read, the index value is 0, and for a write no index register is written. An *indexable* operation computes its effective address by subtracting the index value specified by its tag from its address operand.
 
 Stack frames let functions obtain storage while they are active. It would waste memory, which was a very limited resource, if every routine had to reserve fixed working storage. Instead, a region of memory designated `COMMON` lets routines share temporary storage. A routine that uses `COMMON` specifies how much storage it needs in `COMMON` and the program allocates enough space in `COMMON` for the maximum required size. When a routine is invoked, the caller must assume that the routine will overwrite the part of `COMMON` that it says it will use.
 
-The `TSX` instruction has a tag field but is not indexable. It stores the twos complement of the instruction counter in the index and then branches to the instruction in its address. By convention, index register 4 is used for linkage.
+The `TSX` operation has a tag field but is not indexable. It stores the twos complement of the instruction counter in the index and then branches to the instruction in its address. By convention, index register 4 is used for linkage.
 
 ## Invoking SQRT
 
@@ -130,7 +130,7 @@ A program would invoke `SQRT` by setting `AC` to the argument and calling
        TRA ERROR   TRANSFER TO NEGATIVE ARGUMENT ERROR HANDLING
        ...         USE SQRT RESULT IN AC
 ```
-Indexable instructions can refer to addresses relative to the `TSX` instruction by using the relative offset as their address and specifying the appropriate tag. For example, if a subroutine should branch to the normal return instruction after the `TSX` instruction that invoked it, it would branch to 2 with a tag of 4:
+Indexable operations can refer to addresses relative to the `TSX` operation by using the relative offset as their address and specifying the appropriate tag. For example, if a subroutine should branch to the normal return operation after the `TSX` operation that invoked it, it would branch to 2 with a tag of 4:
 ```
 HELPER REM        A SUBROUTINE
        ...
@@ -197,13 +197,13 @@ VALUE      |      OCTAL      |                     BINARY
 +SQRT(2.0) | 0 201 552023631 | 0 10000001 101 101 010 000 010 011 110 011 001
 +2.0       | 0 202 400000000 | 0 10000010 100 000 000 000 000 000 000 000 000
 ```
-Note that the floating point and integer representations of zero are the same. Floating point values also have the same order as their normalized representations when reinterpreted as integer representations, so the same comparison instructions were used for integer and normalized floating point representations.
+Note that the floating point and integer representations of zero are the same. Floating point values also have the same order as their normalized representations when reinterpreted as integer representations, so the same comparison operations were used for integer and normalized floating point representations.
 
 When `AC` holds a normalized floating point representation, `Q` and `P` will be 0.
 
 ## Integers versus fixed point
 
-The IBM 709 documentation refers to the integer format as *fixed point*. Multiplication on the 709 is defined as if the point is to the right of bit 35, i.e.
+The IBM 704 documentation refers to the integer format as *fixed point*. Multiplication on the 704 is defined as if the point is to the right of bit 35, i.e.
 ```
 +000000000001 * +000000000001 = +000000000000 000000000001
 ```
@@ -222,14 +222,14 @@ Given a normalized floating point representation \([s,c,f]\) for \(x\) in `AC`, 
 ```
   SQRT TZE 2,4               X ZERO NORMAL RETURN                      MISRT1009
 ```
-The `TZE` instruction, *test zero*, transfers control to its effective address if `AC[Q-35] = 0`. This address is two words past the call point and is the address for a normal return. Since `AC` has not been changed, the result is 0.
+The `TZE` operation, *test zero*, transfers control to its effective address if `AC[Q-35] = 0`. This address is two words past the call point and is the address for a normal return. Since `AC` has not been changed, the result is 0.
 
 ## Error for negative argument
 
 ```
        TMI 1,4               X NEGATIVE ALARM RETURN                   MISRT1010
 ```
-The `TMI` instruction, *test minus*, transfers control to its effective address if `AC[S] = 1`. This address is the alarm address, one word after the call point. Since `AC` has not been changed, exception handling can take action based on the value of the argument.
+The `TMI` operation, *test minus*, transfers control to its effective address if `AC[S] = 1`. This address is the alarm address, one word after the call point. Since `AC` has not been changed, exception handling can take action based on the value of the argument.
 
 At this point we know \(x>0\) and \(y > 0\).
 
@@ -240,8 +240,8 @@ $$
 2^{\hat{c}}\hat{f}=x=y^2=2^{2\hat{d}}\hat{g}^2.
 $$
 We can't just say \(\hat{c}=2\hat{d}\) and \(\hat{f}=\hat{g}^2\) because \(f\) must be in normalized form. We have two cases:
-1) Starting with the fraction, since \(\frac{1}{2}\le \hat{g} < 1\), we know that \(\frac{1}{4}\le\hat{g}^2<1\). We need \(\frac{1}{2}\le\hat{c}<1\), which is only true when \(\sqrt{\frac{1}{2}}\le\hat{g}\). Then \(\hat{c}=2\hat{d}\) and \(\hat{f}=\hat{g}^2\).
-2) When \(\frac{1}{2}\le \hat{g}<\sqrt{\frac{1}{2}}\), \(\frac{1}{4}\le\hat{g}^2<\frac{1}{2}\) is not in the range of a normalized fraction, so we need to multiply by 2 to get the fraction in normalized form: \(\frac{1}{2}\le2\hat{g}^2<1\). The exponent will need to be reduced by 1 to cancel out the 2, so \(\hat{c}=2\hat{d}-1\) and \(\hat{f}=2\hat{g}^2\).
+1) When \(\frac{1}{2}\le \hat{g}<\sqrt{\frac{1}{2}}\), \(\frac{1}{4}\le\hat{g}^2<\frac{1}{2}\) is not in the range of a normalized fraction, so we need to multiply by 2 to get the fraction in normalized form: \(\frac{1}{2}\le2\hat{g}^2<1\). The exponent will need to be reduced by 1 to cancel out the 2, so \(\hat{c}=2\hat{d}-1\) and \(\hat{f}=2\hat{g}^2\).
+2) When \(\sqrt{\frac{1}{2}}\le \hat{g} < 1\), \(\frac{1}{2}\le\hat{g}^2<1\), so \(\hat{g}^2\) is normalized. Then \(\hat{c}=2\hat{d}\) and \(\hat{f}=\hat{g}^2\).
 
 This gives us \(\hat{c}\) and \(\hat{f}\) in terms of \(\hat{d}\) and \(\hat{g}\), but we really want \(\hat{d}\) and \(\hat{g}\) in terms of \(\hat{c}\) and \(\hat{f}\). We can use the fact that in the first case \(\hat{c}\) is even and odd in the second to determine which case we are in. Since \(c=\hat{c}+128\), \(c_8=0\) if \(\hat{c}\) is even and 1 if odd. We can combine the two cases to:
 $$
@@ -280,11 +280,11 @@ The next instructions is:
 ```
        ANA SQRT+33           STORE 26 BIT X= Y*Y TO ALLOW ADD          MISRT1011
 ```
-The `ANA` instruction, *AND to Accumulator*, ands `AC` with the value at the effective address. This value in `SQRT+22` is defined with the pseudo-op `OCT` which specifies a raw octal value:
+The `ANA` operation, *AND to Accumulator*, ands `AC` to the value at the effective address. This value in `SQRT+22` is defined with the pseudo-op `OCT` which specifies a raw octal value:
 ```
        OCT 777777777776      MASK FOR 27TH BIT CLIP                    MISRT1042
 ```
-When the comment refers to `26TH BIT` it is referring to the bit in the fraction, not the word. The `ANA` will clear the low-order bit of the fraction, which won't have any effect on the result. `AC` now contains:
+When the comment refers to `27TH BIT` it is referring to the bit in the fraction, not the word. The `ANA` will clear the low-order bit of the fraction, which won't have any effect on the result. `AC` now contains:
 ```
  x  | S | QP | CHAR     | FRACTION
     | 0 | 00 | C[1-8]   | F[1-26]0
@@ -298,7 +298,7 @@ Next,
 ```
        STO COMMON              SHIFT AND ROUND FOR AVERAGES            MISRT1012
 ```
-The `STO` instruction, *Store*, stores `AC[S-35]` in the effective address, so `COMMON` now contains:
+The `STO` operation, *Store*, stores `AC[S-35]` in the effective address, so `COMMON` now contains:
 ```
  x  | S | CHAR     | FRACTION
     | 0 | C[1-8]   | F[1-26]
@@ -344,9 +344,9 @@ Next,
 ```
        ADD COMMON                                                      MISRT1015
 ```
-The `ADD` instruction sets `AC` to the integer addition of `AC` and the contents of the effective address.
+The `ADD` operation sets `AC` to the integer addition of `AC` and the contents of the effective address.
 
-Since `COMMON` is normalized, the first bit of the fraction is 1. If `AC[9] = 1` (odd \(c\)) then adding `COMMON` to `AC` will add 1 to the first bit of the fraction, turning it to 0, and carry into the characteristic, adding 1 to it. This may generate a carry into `AC[P]`. For this part, it will be simplest to treat the characteristic as `AC[Q-8]`. This gives an even characteristic of \(c+c_8\) and a fraction of \(\hat{f}-c_8/2\).
+Since `COMMON` is normalized, the first bit of the fraction is 1. If `AC[9] = 1` (odd \(c\)) then adding `COMMON` to `AC` will add 1 to the first bit of the fraction, turning it to 0, and carry into the characteristic, adding 1 to it. This may generate a carry into `AC[P]`. For this part, it will be simplest to treat the characteristic as `AC[Q-8]`. This gives an even characteristic of \(c+c_8\) and a fraction of \(\hat{f}-\frac{c_8}{2}\).
 ```
  x  | S |  CHAR       | FRACTION
     | 0 | C+C[8]      | (1-C[8]) F[2-26]0
@@ -360,7 +360,8 @@ Next,
        ARS 1                                                           MISRT1016
        STO COMMON+1                                                    MISRT1017
 ```
-Shifting `AC` right by 1 halves the characteristic and makes `AC[P]=0` again. The characteristic is now \((c+c_8)/2=d-64\). Since the characteristic is even, a 0 is shifted into the fraction and the fraction is halved to \((\hat{f}-c_8/2)/2\). This value is stored in `COMMON+1`.
+Shifting `AC` right by 1 halves the characteristic and makes `AC[P]=0` again. The characteristic is now $$\frac{c+c_8}{2}=d-64.$$ Since the characteristic is even, a 0 is shifted into the fraction and the fraction is halved to 
+$$\frac{\hat{f}-\frac{c_8}{2}}{2}.$$ This value is stored in `COMMON+1`.
 ```
 Stored in COMMON+1
  x  | S | QP | CHAR     | FRACTION
@@ -373,24 +374,19 @@ Stored in COMMON+1
 
 ## Fraction
 
-The computation of \(d\) is almost complete, but what is going on with the fraction? This is the beginning of a linear approximation to \(\hat{g}\), which we'll call \(\hat{g}_0\). Recall that there are two cases for the fraction, one for an even exponent and one for an odd exponent.
+The computation of \(d\) is almost complete, but what is going on with the fraction? This is the beginning of a linear approximation to \(\hat{g}\), which we'll call \(\hat{g}_0\). 
 
-For an odd exponent, \(\frac{1}{4}\le \frac{\hat{f}}{2}<\frac{1}{2}\). The linear approximation in this region that matches on the endpoints would be:
+Recall that there are two cases for the fraction, one for an odd exponent and one for an even exponent. In each case, \(\frac{1}{2}\le \hat{f}<1\), but with odd exponents we need to compute \(\sqrt{\frac{f}{2}}\) and with the even exponent \(\sqrt{\hat{f}}\). We can combine these by computing \(\sqrt{s\hat{f}}\) where \(s\) is \(\frac{1}{2}\) for odd exponents and 1 for even exponents. We want the linear approximation to match \(\sqrt{s\hat{f}}\) when \(\hat{f}\) is \(\frac{1}{2}\) and 1. Then
 $$
 \begin{align*}
-\hat{g}_0&=\left(\frac{\hat{f}}{2}-\frac{1}{4}\right)\frac{\sqrt{\frac{1}{2}}-\sqrt{\frac{1}{4}}}{\frac{1}{2}-\frac{1}{4}}+\sqrt{\frac{1}{4}}\\\\
-&=\hat{f}\left(\sqrt{2}-1\right)+\left(1-\frac{\sqrt{2}}{2}\right).
+\hat{g}_0&=\sqrt{\frac{s\hat{f}}{2}}+\left(\hat{f}-\frac{1}{2}\right)\left(\sqrt{s\hat{f}}-\sqrt{\frac{sf}{2}}\right)\\\\
+&=\sqrt{s}\left(\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1\right)\\\\
+&=\begin{cases}
+\hat{f}\left(\sqrt{2}-1\right)+1-\frac{\sqrt{2}}{2}&\text{for odd exponents }(s=\frac{1}{2})\\\\
+\hat{f}\left(2-\sqrt{2}\right)+\sqrt{2}-1&\text{for even exponents }(s=1).
+\end{cases}
 \end{align*}
 $$
-
-For the even case, the exponent is 0 and \(\frac{1}{2}\le \hat{f} < 1\), so
-$$
-\begin{align*}
-\hat{g}_0&=\left(\hat{f}-\frac{1}{2}\right)\frac{\sqrt{1}-\sqrt{\frac{1}{2}}}{1-\frac{1}{2}}+\sqrt{\frac{1}{2}}\\\\
-&=\hat{f}\left(2-\sqrt{2}\right)+\left(\sqrt{2}-1\right).
-\end{align*}
-$$
-
 Both cases involve a floating point multiplication (17 cycles) and addition (7 cycles). Since this is already an approximation, we can approximate a little faster by using integer operations, in particular adds and shifts, which are 2 cycles each. We start with \(\sqrt{2}\). Since \(16\sqrt{2}\approx 23\), we can replace \(\sqrt{2}\) with \(\frac{23}{16}\) to get:
 $$
 \hat{g}_0=
@@ -403,7 +399,7 @@ $$
 ```
        ALS 10                                                          MISRT1018
 ```
-The `ALS` instruction, *accumulator left shift*, shifts `AC` left by 10 bits. As with `ARS`, the `S` bit is not changed and `Q-35` are treated as a group with 0s shifted in from the right. If a 1 bit is shifted into or through `P` the overflow indicator is set. This will shift the fraction so that its first bit is in `AC[Q]`. It will be simplest to treat `AC[Q-35]` as one field in this step:
+The `ALS` operation, *accumulator left shift*, shifts `AC` left by 10 bits. As with `ARS`, the `S` bit is not changed and `Q-35` are treated as a group with 0s shifted in from the right. If a 1 bit is shifted into or through `P` the overflow indicator is set. This will shift the fraction so that its first bit is in `AC[Q]`. It will be simplest to treat `AC[Q-35]` as one field in this step:
 ```
  x  | S | Q-35
     | 0 | 0(1-C[8])F[2-26]*2^10
@@ -418,7 +414,7 @@ Next,
        PBT                                                             MISRT1019
        COM                                                             MISRT1020
 ```
-The `PBT` instruction, *P Bit test*, skips the next instruction if `AC[P] = 1`, i.e. if \(c_8=0\). The `COM` instruction complements `AC[Q-35]`.
+The `PBT` operation, *P Bit test*, skips the next instruction if `AC[P] = 1`, i.e. if \(c_8=0\). The `COM` operation complements `AC[Q-35]`.
 ```
  x  | S | Q-35
     | 0 | c8 ? (2^38-1)-00F[2-26]*2^10 : 01F[2-26]*2^10
@@ -458,9 +454,10 @@ This results in:
 .50 | 0 | 00 | 00000000 | 000 000 000 000 000 000 000 000 000
 .70 | 0 | 00 | 00000000 | 000 000 110 011 001 100 110 011 001
 ```
-Since `F[1] = 1`, a fraction of `0F[2-27]` is \(\hat{f}-1/2\). Here the `F[2-27]` has been shifted right by 4, which would give \(\hat{f}/16-1/32\), which is the fraction for the even case. 
+Since `F[1] = 1`, a fraction of `0F[2-27]` is \(\hat{f}-1/2\). Here the `F[2-27]` has been shifted right by 4, which would give
+$$\frac{\hat{f}}{16}-\frac{1}{32},$$ which is the fraction for the even case. 
 
-For the odd case, we must subtract this from \((2^{22}-1)2^{-27}=1/32+2^{-27}\) to get \(-\hat{f}/16+1/16-2^{-27}\).
+For the odd case, we must subtract this from \((2^{22}-1)2^{-27}=\frac{1}{32}+2^{-27}\) to get $$-\frac{\hat{f}}{16}+\frac{1}{16}-2^{-27}.$$
 
 Next,
 ```
@@ -501,7 +498,7 @@ $$
 \frac{7}{16}f-\frac{3}{16}-2^{-27}+\frac{15}{32}+2^{-27}&=\frac{7}{16}f+\frac{9}{32}&c_8=1.
 \end{align*}
 $$
-Aside from the \(2^-{27}\) in the even case, these correspond to the linear approximation determined earlier.  Why the \(2^{-27}\)? We want to subtract a multiple of the fraction in the even case by adding, which requires a twos complement, but the 709 only has ones complement, which will be off by 1, or \(2^{-27}\). Including the \(2^{-27}\) in the lumped constant will correct the odd case, while leaving it out would leave the even case correct. When \(x=1\) the characteristic is odd so including the \(2^{-27}\) in the odd case makes the linear approximation exact.
+Aside from the \(2^-{27}\) in the even case, these correspond to the linear approximation determined earlier.  Why the \(2^{-27}\)? We want to subtract a multiple of the fraction in the even case by adding, which requires a twos complement, but the 704 only has ones complement, which will be off by 1, or \(2^{-27}\). Including the \(2^{-27}\) in the lumped constant will correct the odd case, while leaving it out would leave the even case correct. When \(x=1\) the characteristic is odd so including the \(2^{-27}\) in the odd case makes the linear approximation exact.
 ```
  x  | S | QP | CHAR     | FRACTION
 .25 | 0 | 00 | 10000000 | 100 000 000 000 000 000 000 000 000
@@ -516,9 +513,24 @@ Finally,
 ```
 replaces `COMMON+1` with the linear approximation.
 
-### Heron's Square Root Formula
+## Error of linear approximation
 
-The square root routine is based on Heron's square root formula. Given an approximation \(y_n\approx \sqrt{x}\), Heron's formula gives a better approximation
+The linear approximation will be less than \(\sqrt{s\hat{f}}\) between \(\frac{1}{2}\) and 1, so the error \(\epsilon_0\) will be:
+$$
+\begin{align*}
+\epsilon_0&=\sqrt{s\hat{f}}-\sqrt{s}\left(\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1\right)\\\\
+&=\sqrt{s}\left(\sqrt{\hat{f}}-\left(2-\sqrt{2}\right)\hat{f}-\sqrt{2}+1\right).
+\end{align*}
+$$
+The error is maximized when
+$$
+\hat{f}=\frac{3+2\sqrt{2}}{8}\approx .729,
+$$
+giving a maximum error of about .0126 when \(s=1\).
+
+# Heron's Square Root Formula
+
+The remainder of the square root routine is based on Heron's square root formula. Given an approximation \(y_n\approx \sqrt{x}\), Heron's formula gives a better approximation
 $$
 y_{n+1} = \frac{1}{2}\left(y_n+\frac{x}{y_n}\right).
 $$
@@ -537,11 +549,71 @@ $$
 &=\frac{x+2\epsilon_n\sqrt{x}+\epsilon_n^2+x-2\epsilon_n\sqrt{x}-2x}{2y_n}\\\\
 &=\frac{\epsilon_n^2}{2y_n}\\\\
 &=\frac{1}{2}\frac{\epsilon_n^2}{\epsilon_n+\sqrt{x}}\\\\
-&\approx \frac{\epsilon_n^2}{2\sqrt{x}}&\text{for }\epsilon_n\text{ small compared to }\sqrt{x}.
+&\approx \frac{\epsilon_n^2}{2\sqrt{x}}&\text{for }\epsilon_n\text{ small compared to }\sqrt{x}\\\\
 \end{align*}
 $$
-Thus
+Then,
 $$
-\epsilon_n\approx \epsilon_0 \left(\frac{\epsilon_0}{2\sqrt{x}}\right)^{2^n}.
+\begin{align*}
+\epsilon_n&\approx \epsilon_0 \left(\frac{\epsilon_0}{2\sqrt{x}}\right)^{2^n}\\
+&\approx 3.73\times 10^{-11}\\
+&\approx 2^{-34.6}.
+\end{align*}
 $$
-By picking a good initial approximation to the square root, only a few applications of Heron's method are needed.
+Thus, two applications of Heron's formula will be have more than the 27 bit precision of the floating point format.
+
+## The first application
+
+At this point, `COMMON` contains \(x\) with exponent \(c\) and fraction \(f\) and `COMMON+1` contains \(y_0\), the linear approximation, with exponent \(d\) and fraction \(g\).
+```
+       CLA COMMON            ITERATE Y(2)                              MISRT1026
+```
+The `CLA` operation, *Clear and Add*, clears `AC` and adds the contents of the effective address, so `AC` now contains \(x\).
+```
+       FDP COMMON+1                                                    MISRT1027
+```
+The `FDP` operation, *Float Divide or Proceed*, divides `AC` by the contents of the effective address, leaving the normalized quotient in `MQ` and the remainder in `AC`.
+```
+       CLA COMMON+1                                                    MISRT1028
+       STQ COMMON+1                                                    MISRT1029
+       ADD COMMON+1            AVERAGE                                 MISRT1030
+```
+We want to average \(\frac{x}{y_0}\) and \(y_0\). Unfortunately, 704 data paths were limited and there isn't a way to add `MQ` and `AC` without going through memory. The `STQ` operation, *Store MQ*, copies `MQ` into the effective address. We then add the two values.
+
+But `ADD` is an integer add, not a floating point add. How can this work? The exponents of \(y_n\) and \(\frac{x}{y_n}\) will both be the same, \(d\), so the points are aligned and there is no need to shift fractions and adjust exponents during the addition. The value \(2d\) will be in `AC[P-8]`. This is even, so `AC[8]` will be 0 unless there is a carry from adding the fractions. Both \(\hat{g}\) and \(\hat{g}\) are at least \(\frac{1}{2}\) but less than 1, so there will be a carry and `AC[8]` will be 1. The result is the normalized floating point sum, shifted left by 1. 
+```
+       LRS 1                                                           MISRT1031
+```
+The `LRS` operation, `Long Right Shift`, treats `AC[Q-35]MQ[1-35]` as one wide register and shifts the contents right 1, putting the low bit of the fraction in `MQ[1]`.
+```
+       RND                     PREVENT CHAR DISAGREEMENT               MISRT1032
+```
+The `RND` operation, *Round*, adds 1 to `AC` if `MQ[1] = 0`.
+
+TBD: The comment indicates that the division could result in a different exponent, but that when this happens the fraction will be all 1s and the `RND` will correct the exponent. This is probably related to clearing the low bit of \(x\) in the beginning.
+```
+       STO COMMON+1          STORE Y(3)                                MISRT1033
+```
+`COMMON+1` is updated with the new approximation.
+
+## Second application
+
+The second application of Heron's formula is identical, except that there is no need to store the result in `COMMON+1`.
+```
+      CLA COMMON            ITERATE Y(3)                              MISRT1034
+       FDP COMMON+1                                                    MISRT1035
+       CLA COMMON+1                                                    MISRT1036
+       STQ COMMON+1                                                    MISRT1037
+       ADD COMMON+1            AVERAGE                                 MISRT1038
+       LRS 1                                                           MISRT1039
+       RND                     IMPROVE ACCURACY                        MISRT1040
+```
+
+## Return
+
+```
+       TOV 2,4               NORMAL RETURN WITH Y(4)                   MISRT1041
+```
+The `TOV` operation, *Transfer on Overflow*, clears the overflow indicator and transfers to the effective address if the overflow indicator is on. Otherwise, it continues with the next instruction, which is a constant. This assumes the overflow indicator will have been set at some point and clears it. If it were not set, the subroutine would fail.
+
+TBD: Is the overflow always set?
