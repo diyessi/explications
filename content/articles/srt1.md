@@ -1,34 +1,39 @@
 ---
-title: "SRT1"
-date: 2024-03-21T20:41:38-07:00
+title: "SHARE Square Root for the IBM 704"
+date: 2024-07-06T00:00:00-00:00
 math: true
 draft: true
 ---
-# IBM 704 SHARE Square Root
+# Abstract
 
-We describe the origins and execution of an IBM 704 floating point routine from the SHARE library that calculates \(y=\sqrt{x}\).
+The IBM 704, introduced in 1954, was the first commercial computer with floating point hardware support and core memory. The SHARE user group was formed to share routines and programs among users. This led to assemblers, compilers, and libraries of routines, some of which have been restored from tapes that have survived. One routine, `SRT1`, computes a floating point square root. Surprisingly, it is able to do so executing only two floating point instructions. Here we describe how this is accomplished.
 
 # The source
 
-## Source of the source
-
 In 1955 some IBM 704 users, including [Roy Nutt](https://history.computer.org/pioneers/nutt.html), formed a group called [SHARE](https://www.share.org/) to share programs and other information related to IBM computers. Programs were distributed on magnetic tape. [Paul Pierce's Computer Collection](https://piercefuller.com/collect/index.html) includes the contents of a number of early computer tapes, including the [IBM SHARE Library](https://www.piercefuller.com/library/share.html) on some tapes from Yale. The [Yale SHARE Tape 2 29-508](https://www.piercefuller.com/library/kyu2.html) contains the square root routine.
+
+The files corresponding to the recovered tapes are essentially the raw tape contents and require some pre-processing. Tapes contain a sequence of tape files. Each tape file is a sequence of records. Each record corresponds contains the contents of one or more cards, which may be binary or character (symbolic). Character format was either 72 characters or 80 characters per card, depending on the equipment. The 704 could only read/write the first 72 characters of a card, but the tapes were produced on later processors in the same family.
 
 ## Meta-information
 
-Each routine in the library includes meta-information for the routine. In this case,
+Each routine on the tape is preceded by a header record of meta-information for the routine. The headers are in a BCD character format and have been converted to ASCII. There is quite a bit of variability among the headers.
+
+For `SRT1` the header record is:
 ```
 B4 MI SRT1 02-06-58 0399         SY 0045
 ```
+Most of the information can be understood:
  - `B4` is the classification, a root or power, as described in [SHARE Reference Manual, 03.10 -29](https://www.piercefuller.com/scan/share59.pdf#page=66).
  - `MI` indicates the contributor, MIT, as listed in [SHARE Reference Manual, 02.02 -14](https://www.piercefuller.com/scan/share59.pdf#page=27).
  - `SRT1` names this particular implementation of square root.
  - `02-06-58` is the date.
- - `0399` is not known. Perhaps related to the record size.
+ - `0399` might be related to the record size.
  - `SY` indicates *symbolic*, meaning source.
- - `0045` is the last line.
+ - `0045` If cards are numbered from 0000, this is the number of the last card.
 
-## The source program
+## The source code
+
+The source code is also in a BCD character format on the tape and has been converted to ASCII:
 ```
        REM SQUARE ROOT, FLOATING POINT                                 MISRT1000
        REM   TIME (AV.)= 102 CYCLES= 1.224 M.S.                        MISRT1001
@@ -77,28 +82,41 @@ B4 MI SRT1 02-06-58 0399         SY 0045
        OCT 000017777777      MASK FOR CORRECTION                       MISRT1044
        OCT 100360000001      LUMPED CONSTANT                           MISRT1045
 ```
+
 # Understanding the source
 
 The source is easily recognized as being written in an assembly language. The assembler is [SHARE Assembler Program (SAP)](https://sky-visions.com/ibm/704/uasap.pdf#page=2), written by [Roy Nutt](https://history.computer.org/pioneers/nutt.html). Each line corresponds to one 80 column IBM punched card. The punched card character set and the closely related six bit BCD encoding is limited to uppercase letters and some symbols. Character positions, numbered from 1 to 80, are called columns, not because of the columns formed in the source listing, but because of the column of punched holes that encodes the character on a card. Only columns 1 through 72 can be read by the IBM 704 but could be read if the cards were transferred to tape.
+
+It was common to use columns on the right side of the card to add sequencing information that was ignored by the assembler. If the cards were accidentally dropped, a punched card sorter, a common piece of office equipment at the time, could be used to put them back in order, although for 46 cards it was probably faster to sort them by hand.
 
 Columns 8 through 10 contain a three character operation which determine the syntax for the line.
 
 ## Comments
 
-Any characters separated by at least one space from the last operand are comments. If the assembler reads the program from cards, characters in columns 73 through 80 will not be seen and will not show up in a listing, while they are available if the assembler is using tape input. The `REM` (remark) pseudo-op has no operands, giving additional room for a comment.
+Any characters separated by at least one space from the last operand are comments. If the assembler reads the program from cards, characters in columns 73 through 80 will not be seen and will not show up in a listing, while they are available if the assembler is using tape input. The `REM` (remark) pseudo-op is used for lines that only contain comments. Early versions of the assembler required two spaces between `REM` and the comment, but the first `REM` above indicates that this requirement was later dropped.
 ```
-       REM THIS IS A REMARK COMMENT
+       REM  THIS IS A REMARK COMMENT
        CLA X,2 THIS IS AN INSTRUCTION COMMENT
 ```
 
 ## Memory addressing
 
-For the purposes of understanding the `SQRT` implementation, IBM 704 addresses are 15 bits and each address corresponds to a 36 bit word. The high order bit is designated `S`, followed by the *magnitude*, bits `1` through `35`, with `35` being the low order bit. For a word `W`, `W[S]` or \(W_S\) is the sign, `W[2]` or \(W_2\) is bit 2, and `W[2-5]` or \(W_{[2-5]}\) are bits 2 through 5. Words are written in octal while addresses are usually in decimal.
+For the purposes of understanding the `SQRT` implementation, IBM 704 addresses are 15 bits and each address corresponds to a 36 bit word. The high order bit is designated `S`, followed by the *magnitude*, bits `1` through `35`, with `35` being the low order bit. Here, for a word `W`, `W[S]` or \(W_S\) is the value of the sign bit, `W[2]` or \(W_2\) is the value of bit 2, and `W[2-5]` or \(W_{[2-5]}\) is the value of bits 2 through 5. Words are written in octal while addresses are usually in decimal.
 
 Two registers are used for arithmetic operations:
  - `AC` is a 38 bit *accumulator* register with bits `S`, `Q`, `P`, `1-35` from high to low. The `Q` and `P` bits extend the arithmetic range available for some intermediate results. When `AC` is written to memory, the `Q` and `P` bits are not written to memory, and when memory is written to `AC`, `Q` and `P` will be 0.
  - `MQ` is a 36 bit *multiplier quotient* register
 Some operations treat the pair of `AC` and `MQ` similar to a wide register.
+
+# Linkage
+
+Programs were organized somewhat differently than they are today. There was no call stack with stack frames containing return information and local storage. The main program was a collection of segments consisting of a mix of instructions and data connected together by conditional and unconditional branches. Subroutines were often inline. When not inline, they were branched to in such a way that when the routine was complete it could branch to the next segment to be executed. In some case, such as the square root, there might be more than one possible continuation segment, so a way was needed for the subroutine to determine where to branch to in each case. If there were arguments and/or results that could not be kept in registers, there also needed to be a way to tell the subroutine where to find the arguments and where to store the results.
+
+One way this was done was to have a user of a subroutine first modify instructions in the subroutine to specify the proper return locations and addresses and then branch to the subroutine. Exit points in the subroutine would then be branches to the part of the program that was supposed to be executed next.
+
+The 704 provides a simpler mechanism. There are three address-sized *index* registers, 1, 2, and 4. Most operations have a three bit *tag* field which specifies how an index value is read from/written to the index registers. For reading, the specified register contents are ORed, while for writing the specified index registers are set. When the tag is 0 for a read, the index value is 0, and for a write no index register is written. An *indexable* operation computes its effective address by subtracting the index value specified by its tag from its address operand.
+
+Stack frames let functions obtain storage while they are active. It would waste memory, which was a very limited resource, if every routine had to reserve fixed working storage. Instead, a region of memory designated `COMMON` lets routines share temporary storage. A routine that uses `COMMON` specifies how much storage it needs in `COMMON` and the program allocates enough space in `COMMON` for the maximum required size. When a routine is invoked, the caller must assume that the routine will overwrite the part of `COMMON` that it says it will use.
 
 ## Linkage for SQRT
 
@@ -112,15 +130,9 @@ The first few lines describe how the routine is to be used:
 ```
 The complete `SQRT` routine uses 37 words.
 
-Programs were organized somewhat differently than they are today. There was no call stack with stack frames containing return information and local storage. The main program was a collection of segments consisting of a mix of instructions and data connected together by conditional and unconditional branches. Subroutines were often inline. When not inline, they were branched to in such a way that when the routine was complete it could branch to the next segment to be executed. In some case, such as the square root, there might be more than one possible continuation segment, so a way was needed for the subroutine to determine where to branch to in each case. If there were arguments and/or results that could not be kept in registers, there also needed to be a way to tell the subroutine where to find the arguments and where to store the results.
+The `TSX` operation, *Transfer and set Index*, has a tag field but is not indexable. It stores the twos complement of the instruction counter in the specified index register(s) and then branches to the instruction in its address. By convention, index register 4 is used for linkage.
 
-One way this was done was to have a user of a subroutine first modify instructions in the subroutine to specify the proper return locations and addresses and then branch to the subroutine. Exit points in the subroutine would then be branches to the part of the program that was supposed to be executed next.
-
-The 704 provides a simpler mechanism. There are three address-sized *index* registers, 1, 2, and 4. Most operations have a three bit *tag* field which specifies how an index value is read from/written to the index registers. For reading, the specified register contents are ORed, while for writing the specified index registers are set. When the tag is 0 for a read, the index value is 0, and for a write no index register is written. An *indexable* operation computes its effective address by subtracting the index value specified by its tag from its address operand.
-
-Stack frames let functions obtain storage while they are active. It would waste memory, which was a very limited resource, if every routine had to reserve fixed working storage. Instead, a region of memory designated `COMMON` lets routines share temporary storage. A routine that uses `COMMON` specifies how much storage it needs in `COMMON` and the program allocates enough space in `COMMON` for the maximum required size. When a routine is invoked, the caller must assume that the routine will overwrite the part of `COMMON` that it says it will use.
-
-The `TSX` operation has a tag field but is not indexable. It stores the twos complement of the instruction counter in the index and then branches to the instruction in its address. By convention, index register 4 is used for linkage.
+`SQRT` has an error return and a normal return. The error return will be used when the argument is negative, and the normal return will be used otherwise.
 
 ## Invoking SQRT
 
@@ -137,7 +149,9 @@ HELPER REM        A SUBROUTINE
        TRA 2,4    RETURN TO CALLER
 ```
 
-## Integer format
+# Number representations
+
+## Integer
 
 A word \(W\) represents the integer \((1-2W_S)W_{1-35}\). A value is considered to be 0 when \(W_{1-35}=0\), regardless of \(W_S\), but \(W=0\) is the conventional representation for 0. The two zeros can be distinguished by including a sign. `AC` represents the integer \((2-\texttt{AC}_S)\texttt{AC}_{Q-35}\).
 
@@ -152,7 +166,7 @@ When words representing integers are written using octal notation, they may be w
 +2 : +000000000002 000000000002
 ```
 
-## Floating point format
+## Floating point
 
 The floating point representation uses 36 bits containing three unsigned integer fields: a one bit *sign* \(s\) in the sign bit `S`, an eight bit *characteristic* \(c\) in bits 1 through 8, and a 27 bit *fraction* \(f\) in bits 9 through 35. We will use the notation \([s|c|f]\). The sign is used in the same was as with the integer representation. The characteristic is the binary exponent biased by 128 and the fraction is the numerator of a fraction with denominator \(2^{27}\).
 
@@ -528,7 +542,7 @@ $$
 $$
 giving a maximum error of about .0126 when \(s=1\).
 
-# Heron's Square Root Formula
+## Heron's Square Root Formula
 
 The remainder of the square root routine is based on Heron's square root formula. Given an approximation \(y_n\approx \sqrt{x}\), Heron's formula gives a better approximation
 $$
