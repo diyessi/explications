@@ -151,9 +151,9 @@ HELPER REM        A SUBROUTINE
 
 # Number representations
 
-## Integer
+## Fixed point/integer
 
-A word \(W\) represents the integer \((1-2W_S)W_{1-35}\). A value is considered to be 0 when \(W_{1-35}=0\), regardless of \(W_S\), but \(W=0\) is the conventional representation for 0. The two zeros can be distinguished by including a sign. `AC` represents the integer \((2-\texttt{AC}_S)\texttt{AC}_{Q-35}\).
+In the fixed point representation, the sign bit specifies the sign, the magnitude bits specify the absolute value, and the programmer tracks a power of two the magnitude is scaled by to get the value. If the scale is 1, the values are integers. This is the case for all fixed point representations used in `SQRT`, so a word \(W\) represents the integer \((1-2W_S)W_{1-35}\). A value is considered to be 0 when \(W_{1-35}=0\), regardless of \(W_S\), but \(W=0\) is the conventional representation for 0. The two zeros can be distinguished by including a sign. `AC` represents the integer \((2-\texttt{AC}_S)\texttt{AC}_{Q-35}\). This is identical to how positive integers are represented today.
 
 When words representing integers are written using octal notation, they may be written with a separate sign or with `S` folded into the first digit. For example, the values \(-2\) through \(2\) written using the signed and unsigned formats are:
 ```
@@ -192,7 +192,7 @@ VALUE   S    C        F
 1.0   | 0 | 202 | 200000000
 1.0   | 0 | 203 | 100000000
 ```
-The representation is normalized if when \(f=0\) then \(c=0\), and when \(f\ne 0\) then \(f \ge 2^{26}\), i.e. \(f_1=1\) and \(\frac{1}{2}\le\hat{f}<1\).
+The representation is normalized if \(c=0\) when \(f=0\) or if when \(f\ne 0\)\(f \ge 2^{26}\). For non-zero values, \(f_1=1\) and \(\frac{1}{2}\le\hat{f}<1\).
 
 Some representations of normalized floating point values in octal and binary are:
 ```
@@ -214,18 +214,6 @@ VALUE      |      OCTAL      |                     BINARY
 Note that the floating point and integer representations of zero are the same. Floating point values also have the same order as their normalized representations when reinterpreted as integer representations, so the same comparison operations were used for integer and normalized floating point representations.
 
 When `AC` holds a normalized floating point representation, `Q` and `P` will be 0.
-
-## Integers versus fixed point
-
-The IBM 704 documentation refers to the integer format as *fixed point*. Multiplication on the 704 is defined as if the point is to the right of bit 35, i.e.
-```
-+000000000001 * +000000000001 = +000000000000 000000000001
-```
-Many computers at the time defined multiplication as if the point were to the left of bit 1, i.e. magnitudes are fractions less than 1:
-```
-+200000000000 * +200000000000 = +200000000000 000000000000
-```
-The fraction in floating point representation is in this second format where the point is to the left of the fraction.
 
 # The SQRT routine
 
@@ -422,6 +410,7 @@ The `ALS` operation, *accumulator left shift*, shifts `AC` left by 10 bits. As w
 .50 | 0 | 010 000 000 000 000 000 000 000 000 000 000 000 0
 .70 | 0 | 010 110 011 001 100 110 011 001 100 000 000 000 0
 ```
+In all cases, the overflow indicator will be set since the characteristic is at least 1, so it has a non-zero bit that will be shifted to `P` if not through `P`.
 
 Next,
 ```
@@ -557,12 +546,17 @@ $$
 \begin{align*}
 \epsilon_{n+1}&=y_{n+1}-\sqrt{x}\\\\
 &=\frac{1}{2}\left(y_n+\frac{x}{y_n}\right)-\sqrt{x}\\\\
-&=\frac{y_n^2+x}{2y_n}-\sqrt{x}\\\\
-&=\frac{y_n^2+x-2y_n\sqrt{x}}{2y_n}\\\\
-&=\frac{\left(\sqrt{x}+\epsilon_n\right)^2+x-2\left(\epsilon_n+\sqrt{x}\right)\sqrt{x}}{2y_n}\\\\
-&=\frac{x+2\epsilon_n\sqrt{x}+\epsilon_n^2+x-2\epsilon_n\sqrt{x}-2x}{2y_n}\\\\
-&=\frac{\epsilon_n^2}{2y_n}\\\\
-&=\frac{1}{2}\frac{\epsilon_n^2}{\epsilon_n+\sqrt{x}}\\\\
+&=\frac{y_n^2+(y_n-e_n)^2}{2y_n}-(y_n-\epsilon_n)\\\\
+&=\frac{2y_n^2-2y_n\epsilon_n+\epsilon_n^2-2y_n^2+2y_n\epsilon_n}{2y_n}\\\\
+&=\frac{\epsilon_n^2}{2y_n}
+\end{align*}
+$$
+From this we see that whether \(\epsilon_0\) is negative or positive, \(\epsilon_n\) is positive for \(n>0\). The linear approximation is exact for odd exponents when \(\hat{f}=1\) and otherwise less than \(\sqrt{x}\).
+
+We can estimate the error after \(n\) iterations:
+$$
+\begin{align*}
+\epsilon_n&=\frac{1}{2}\frac{\epsilon_n^2}{\epsilon_n+\sqrt{x}}\\\\
 &\approx \frac{\epsilon_n^2}{2\sqrt{x}}&\text{for }\epsilon_n\text{ small compared to }\sqrt{x}\\\\
 \end{align*}
 $$
@@ -604,7 +598,8 @@ The `LRS` operation, `Long Right Shift`, treats `AC[Q-35]MQ[1-35]` as one wide r
 ```
 The `RND` operation, *Round*, adds 1 to `AC` if `MQ[1] = 0`.
 
-TBD: The comment indicates that the division could result in a different exponent, but that when this happens the fraction will be all 1s and the `RND` will correct the exponent. This is probably related to clearing the low bit of \(x\) in the beginning.
+TBD: It is not clear that this instruction serves any purpose. It seems the characteristics will always agree and the next application of Herod's method will more than make up for any error at this point.
+
 ```
        STO COMMON+1          STORE Y(3)                                MISRT1033
 ```
@@ -628,6 +623,4 @@ The second application of Heron's formula is identical, except that there is no 
 ```
        TOV 2,4               NORMAL RETURN WITH Y(4)                   MISRT1041
 ```
-The `TOV` operation, *Transfer on Overflow*, clears the overflow indicator and transfers to the effective address if the overflow indicator is on. Otherwise, it continues with the next instruction, which is a constant. This assumes the overflow indicator will have been set at some point and clears it. If it were not set, the subroutine would fail.
-
-TBD: Is the overflow always set?
+The `TOV` operation, *Transfer on Overflow*, clears the overflow indicator and transfers to the effective address if the overflow indicator is on. Otherwise, it continues with the next instruction, which is a constant. The overflow indicator was set in the `ALS 10` instruction, so this will not fall through to the constant.
