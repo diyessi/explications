@@ -286,7 +286,9 @@ The `ANA` operation, *AND to Accumulator*, ands `AC` to the value at the effecti
 ```
        OCT 777777777776      MASK FOR 27TH BIT CLIP                    MISRT1042
 ```
-When the comment refers to `27TH BIT` it is referring to the bit in the fraction, not the word. The `ANA` will clear the low-order bit of the fraction, which won't have any effect on the result. `AC` now contains:
+When the comment refers to `27TH BIT` it is referring to the bit in the fraction, not the word. The `ANA` will clear the low-order bit of the fraction. This will lower the square root by less than half the low fraction bit, so it will not make a difference in the floating point representation of the square root. It will make a difference in the computation, as described later.
+
+`AC` now contains:
 ```
  x  | S | QP | CHAR     | FRACTION
     | 0 | 00 | C[1-8]   | F[1-26]0
@@ -401,7 +403,9 @@ $$
 ```
        ALS 10                                                          MISRT1018
 ```
-The `ALS` operation, *accumulator left shift*, shifts `AC` left by 10 bits. As with `ARS`, the `S` bit is not changed and `Q-35` are treated as a group with 0s shifted in from the right. If a 1 bit is shifted into or through `P` the overflow indicator is set. This will shift the fraction so that its first bit is in `AC[Q]`. It will be simplest to treat `AC[Q-35]` as one field in this step:
+The `ALS` operation, *accumulator left shift*, shifts `AC` left by 10 bits. As with `ARS`, the `S` bit is not changed and `Q-35` are treated as a group with 0s shifted in from the right. If a 1 bit is shifted into or through `P` the overflow indicator is set.
+
+This will shift the fraction so that its first bit is in `AC[Q]`. It will be simplest to treat `AC[Q-35]` as one field in this step:
 ```
  x  | S | Q-35
     | 0 | 0(1-C[8])F[2-26]*2^10
@@ -410,7 +414,7 @@ The `ALS` operation, *accumulator left shift*, shifts `AC` left by 10 bits. As w
 .50 | 0 | 010 000 000 000 000 000 000 000 000 000 000 000 0
 .70 | 0 | 010 110 011 001 100 110 011 001 100 000 000 000 0
 ```
-In all cases, the overflow indicator will be set since the characteristic is at least 1, so it has a non-zero bit that will be shifted to `P` if not through `P`.
+Using the 704 bit numbering for a word, the characteristic is in bits 1-8, so shifting left 10 bits moves the entire characteristic through `P`. Thus, if the characteristic is not 0, the overflow indicator will be set. If the characteristic is 0, it is even and a 1 will be shifted into `P`, again setting the overflow indicator.  The overflow indicator will remain set until it is explicitly cleared.
 
 Next,
 ```
@@ -596,9 +600,11 @@ The `LRS` operation, `Long Right Shift`, treats `AC[Q-35]MQ[1-35]` as one wide r
 ```
        RND                     PREVENT CHAR DISAGREEMENT               MISRT1032
 ```
-The `RND` operation, *Round*, adds 1 to `AC` if `MQ[1] = 0`.
+The `RND` operation, *Round*, adds 1 to `AC` if `MQ[1]` is 1. Since this is immediately followed by a second application of Heron's formula, which will more than correct for an error in the low order bit of the fraction, this would seem to be an unnecessary operation, and it would be if floating point arithmetic were being used.
 
-TBD: It is not clear that this instruction serves any purpose. It seems the characteristics will always agree and the next application of Herod's method will more than make up for any error at this point.
+However, the averaging is being done with fixed point arithmetic. When \(f \ge 777777776\), such as `200 777777776`, the linear approximation gives `AC = 0200777777776` and `MQ =  300377777777`. The `FDP` will give `MQ = 201 400000000`. The exponents of the two values to be averaged are no longer the same, so integer arithmetic cannot be used for the average. The `RND` changes `AC` to `0200777777777` and the `FDP` now gives `MQ = 200777777777` and the integer averaging will work.
+
+This `RND` is the reason for the `ANA` the clears bit 27 in the beginning of the computation. Without clearing the bit, with an argument of `200777777777`, we have `AC = 0201177777777` and `MQ = 300600000000` before the `RND`. The `RND` would change `AC` to `0201200000000`, again giving different exponents and preventing the integer averaging.
 
 ```
        STO COMMON+1          STORE Y(3)                                MISRT1033
@@ -609,7 +615,7 @@ TBD: It is not clear that this instruction serves any purpose. It seems the char
 
 The second application of Heron's formula is identical, except that there is no need to store the result in `COMMON+1`.
 ```
-      CLA COMMON            ITERATE Y(3)                              MISRT1034
+       CLA COMMON            ITERATE Y(3)                              MISRT1034
        FDP COMMON+1                                                    MISRT1035
        CLA COMMON+1                                                    MISRT1036
        STQ COMMON+1                                                    MISRT1037
@@ -623,4 +629,6 @@ The second application of Heron's formula is identical, except that there is no 
 ```
        TOV 2,4               NORMAL RETURN WITH Y(4)                   MISRT1041
 ```
-The `TOV` operation, *Transfer on Overflow*, clears the overflow indicator and transfers to the effective address if the overflow indicator is on. Otherwise, it continues with the next instruction, which is a constant. The overflow indicator was set in the `ALS 10` instruction, so this will not fall through to the constant.
+Computing a square root should not result in an overflow, but the overflow indicator was set in the `ALS 10` instruction.
+
+The `TOV` operation, *Transfer on Overflow*, clears the overflow indicator and transfers to the effective address if the overflow indicator is on. Otherwise, it continues with the next instruction. Today it would be considered good practice to follow the `TOV` instruction with a branch to some kind of report of an assertion violated, but in 1958 using the `TOV` to both clear the overflow indicator and return was considered efficient.
