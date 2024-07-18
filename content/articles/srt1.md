@@ -310,6 +310,7 @@ Next,
 ```
 The `STO` operation, *Store*, stores `AC[S-35]` in the effective address, so `COMMON` now contains:
 ```
+COMMON
  x  | S | CHAR     | FRACTION
     | 0 | C[1-8]   | F[1-26]
 .25 | 0 | 01111111 | 100 000 000 000 000 000 000 000 000
@@ -381,7 +382,7 @@ Next,
 Shifting `AC` right by 1 halves the characteristic and makes `AC[P]=0` again. The characteristic is now $$\frac{c+c_8}{2}=d-64.$$ Since the characteristic is even, a 0 is shifted into the fraction and the fraction is halved to 
 $$\frac{\hat{f}-\frac{c_8}{2}}{2}.$$ This value is stored in `COMMON+1`.
 ```
-Stored in COMMON+1
+COMMON+1
  x  | S | QP | CHAR     | FRACTION
     | 0 | 00 | D-64     | 0(1-C[8])F[2-26]0
 .25 | 0 | 00 | 01000000 | 000 000 000 000 000 000 000 000 000
@@ -547,6 +548,16 @@ Finally,
        STO COMMON+1          STORE Y(2)                                MISRT1025
 ```
 replaces `COMMON+1` with the linear approximation.
+```
+COMMON+1
+ x  | S | CHAR     | FRACTION
+.25 | 0 | 10000000 | 100 000 000 000 000 000 000 000 000
+.33 | 0 | 10000000 | 100 100 011 110 101 110 000 101 001
+.49 | 0 | 10000000 | 101 110 000 000 000 000 000 000 000
+.50 | 0 | 10000000 | 101 110 000 000 000 000 000 000 001
+.70 | 0 | 10000000 | 110 101 001 100 110 011 001 100 110
+.99 | 0 | 10000000 | 111 111 111 111 111 111 111 111 111
+```
 
 ## Error of linear approximation
 
@@ -613,6 +624,39 @@ The `CLA` operation, *Clear and Add*, clears `AC` and adds the contents of the e
        FDP COMMON+1                                                    MISRT1027
 ```
 The `FDP` operation, *Float Divide or Proceed*, divides `AC` by the contents of the effective address, leaving the normalized quotient in `MQ` and the remainder in `AC`.
+```
+x=.25
+COMMON   | 0 | 01111111 | 100 000 000 000 000 000 000 000 000
+COMMON+1 | 0 | 10000000 | 100 000 000 000 000 000 000 000 000
+FDP      | 0 | 10000000 | 100 000 000 000 000 000 000 000 000
+
+x=.33
+COMMON   | 0 | 01111111 | 101 010 001 111 010 111 000 010 100
+COMMON+1 | 0 | 10000000 | 100 100 011 110 101 110 000 101 001
+FDP      | 0 | 10000000 | 100 101 000 011 010 111 100 100 111
+
+x=.49
+COMMON   | 0 | 01111111 | 111 111 111 111 111 111 111 111 110
+COMMON+1 | 0 | 10000000 | 101 110 000 000 000 000 000 000 000
+FDP      | 0 | 10000000 | 101 100 100 001 011 001 000 010 100
+
+x=.50
+COMMON   | 0 | 10000000 | 100 000 000 000 000 000 000 000 000
+COMMON+1 | 0 | 10000000 | 101 110 000 000 000 000 000 000 001
+FDP      | 0 | 10000000 | 101 100 100 001 011 001 000 010 101
+
+x=.70
+COMMON   | 0 | 10000000 | 101 100 110 011 001 100 110 011 000
+COMMON+1 | 0 | 10000000 | 110 101 001 100 110 011 001 100 110
+FDP      | 0 | 10000000 | 110 101 111 001 010 000 110 101 101
+
+x=.99
+COMMON   | 0 | 10000000 | 111 111 111 111 111 111 111 111 110
+COMMON+1 | 0 | 10000000 | 111 111 111 111 111 111 111 111 111
+FDP      | 0 | 10000000 | 111 111 111 111 111 111 111 111 110
+```
+Notice how earlier clearing the low-order bit has ensured that in the first group the fraction of `COMMON+1` is always less than the fraction of `COMMON`, ensuring that the exponent of the quotient is the same as `COMMON+1`. In the second group, notice that the exponent of `COMMON+1` is always more than `COMMON`, again ensuring the exponent of quotient is the same as `COMMON+1`. In the .99 case, this is only true because the low order bit of \(x\) was dropped.
+
 ```
        CLA COMMON+1                                                    MISRT1028
        STQ COMMON+1                                                    MISRT1029
