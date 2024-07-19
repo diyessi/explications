@@ -625,6 +625,7 @@ The `CLA` operation, *Clear and Add*, clears `AC` and adds the contents of the e
 ```
 The `FDP` operation, *Float Divide or Proceed*, divides `AC` by the contents of the effective address, leaving the normalized quotient in `MQ` and the remainder in `AC`.
 ```
+         | S | CHAR     | FRACTION
 x=.25
 COMMON   | 0 | 01111111 | 100 000 000 000 000 000 000 000 000
 COMMON+1 | 0 | 10000000 | 100 000 000 000 000 000 000 000 000
@@ -674,9 +675,52 @@ The `LRS` operation, `Long Right Shift`, treats `AC[Q-35]MQ[1-35]` as one wide r
 ```
 The `RND` operation, *Round*, adds 1 to `AC` if `MQ[1]` is 1. Since this is immediately followed by a second application of Heron's formula, which will more than correct for an error in the low order bit of the fraction, this would seem to be an unnecessary operation, and it would be if floating point arithmetic were being used.
 
-However, the averaging is being done with fixed point arithmetic. When \(f \ge 777777776\), such as `200 777777776`, the linear approximation gives `AC = 0200777777776` and `MQ =  300377777777`. The `FDP` will give `MQ = 201 400000000`. The exponents of the two values to be averaged are no longer the same, so integer arithmetic cannot be used for the average. The `RND` changes `AC` to `0200777777777` and the `FDP` now gives `MQ = 200777777777` and the integer averaging will work.
+Notice how for the ".99" case, the combination of the `ANA` in `MISRT1011` and the `RND` in `MISRT1032` work together to ensure that the quotient will not increase the exponent and the final fraction will at the end of this application of Heron's formula will be greater than `COMMON` for the next application of Heron's formula.
+```
+         | S | QP | CHAR     | FRACTION                            | MQ 1
+x=.25
+COMMON+1 | 0 |      10000000 | 100 000 000 000 000 000 000 000 000
+FDP      | 0 | 00 | 10000000 | 100 000 000 000 000 000 000 000 000
+ADD      | 0 | 01 | 00000001 | 000 000 000 000 000 000 000 000 000
+LRS      | 0 | 00 | 10000000 | 100 000 000 000 000 000 000 000 000 | 0
+RND      | 0 | 00 | 10000000 | 100 000 000 000 000 000 000 000 000 
 
-This `RND` is the reason for the `ANA` the clears bit 27 in the beginning of the computation. Without clearing the bit, with an argument of `200777777777`, we have `AC = 0201177777777` and `MQ = 300600000000` before the `RND`. The `RND` would change `AC` to `0201200000000`, again giving different exponents and preventing the integer averaging.
+x=.33
+COMMON+1 | 0 |      10000000 | 100 100 011 110 101 110 000 101 001
+FDP      | 0 | 00 | 10000000 | 100 101 000 011 010 111 100 100 111
+ADD      | 0 | 01 | 00000001 | 001 001 100 010 000 101 101 010 000
+LRS      | 0 | 00 | 10000000 | 100 100 110 001 000 010 110 101 000 | 0
+RND      | 0 | 00 | 10000000 | 100 100 110 001 000 010 110 101 000
+
+x=.49
+COMMON+1 | 0 |      10000000 | 101 110 000 000 000 000 000 000 000
+FDP      | 0 | 00 | 10000000 | 101 100 100 001 011 001 000 010 100
+ADD      | 0 | 01 | 00000001 | 011 010 100 001 011 001 000 010 100
+LRS      | 0 | 00 | 10000000 | 101 101 010 000 101 100 100 001 010 | 0
+RND      | 0 | 00 | 10000000 | 101 101 010 000 101 100 100 001 010
+
+x=.50
+COMMON+1 | 0 |      10000000 | 101 110 000 000 000 000 000 000 001
+FDP      | 0 | 00 | 10000000 | 101 100 100 001 011 001 000 010 101
+ADD      | 0 | 01 | 00000001 | 011 010 100 001 011 001 000 010 110
+LRS      | 0 | 00 | 10000000 | 101 101 010 000 101 100 100 001 011 | 0
+RND      | 0 | 00 | 10000000 | 101 101 010 000 101 100 100 001 011
+
+x=.70
+COMMON+1 | 0 |      10000000 | 110 101 001 100 110 011 001 100 110
+FDP      | 0 | 00 | 10000000 | 110 101 111 001 010 000 110 101 101
+ADD      | 0 | 01 | 00000001 | 101 011 000 110 000 100 000 010 011
+LRS      | 0 | 00 | 10000000 | 110 101 100 011 000 010 000 001 001 | 1
+RND      | 0 | 00 | 10000000 | 110 101 100 011 000 010 000 001 010
+
+x=.99
+COMMON+1 | 0 |      10000000 | 111 111 111 111 111 111 111 111 111
+FDP      | 0 | 00 | 10000000 | 111 111 111 111 111 111 111 111 110
+ADD      | 0 | 01 | 00000001 | 111 111 111 111 111 111 111 111 101
+LRS      | 0 | 00 | 10000000 | 111 111 111 111 111 111 111 111 110 | 1
+RND      | 0 | 00 | 10000000 | 111 111 111 111 111 111 111 111 111
+```
+
 
 ```
        STO COMMON+1          STORE Y(3)                                MISRT1033
@@ -685,7 +729,7 @@ This `RND` is the reason for the `ANA` the clears bit 27 in the beginning of the
 
 ## Second application
 
-The second application of Heron's formula is identical, except that there is no need to store the result in `COMMON+1`.
+The second application of Heron's formula is identical, except that there is no need to store the result in `COMMON+1`. Since an application of Heron's formula always results in a non-negative error, the first application ensures that the divisions will no increase the exponent, so the integer arithmetic will be safe.
 ```
        CLA COMMON            ITERATE Y(3)                              MISRT1034
        FDP COMMON+1                                                    MISRT1035
