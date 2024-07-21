@@ -192,12 +192,12 @@ VALUE   S    C        F
 1.0   | 0 | 202 | 200000000
 1.0   | 0 | 203 | 100000000
 ```
-The representation is normalized if \(c=0\) when \(f=0\) or if when \(f\ne 0\)\(f \ge 2^{26}\). For non-zero values, \(f_1=1\) and \(\frac{1}{2}\le\hat{f}<1\).
+The representation is normalized if \(c=0\) when \(f=0\) or if when \(f\ne 0\), \(f \ge 2^{26}\). For non-zero values, \(f_1=1\) and \(\frac{1}{2}\le\hat{f}<1\).
 
 Some representations of normalized floating point values in octal and binary are:
 ```
 VALUE      |      OCTAL      |                     BINARY
-           | S  C  F         | S C        F     
+           | S  C  F         | S CHAR     FRACTION
 -1.0       | 1 201 400000000 | 1 10000001 100 000 000 000 000 000 000 000 000
 -0.33      | 1 177 521727024 | 1 01111111 101 010 001 111 010 111 000 010 100
 -0.0       | 1 000 000000000 | 1 00000000 000 000 000 000 000 000 000 000 000
@@ -208,7 +208,7 @@ VALUE      |      OCTAL      |                     BINARY
 +0.5       | 0 200 400000000 | 0 10000000 100 000 000 000 000 000 000 000 000
 +0.7       | 0 200 546314631 | 0 10000000 101 100 110 011 001 100 110 011 001
 +SQRT(0.5) | 0 200 552023631 | 0 10000000 101 101 010 000 010 011 110 011 001
-+.999...   | 0 200 777777777 | 0 10000000 111 111 111 111 111 111 111 111 111
++.99...    | 0 200 777777777 | 0 10000000 111 111 111 111 111 111 111 111 111
 +1.0       | 0 201 400000000 | 0 10000001 100 000 000 000 000 000 000 000 000
 +SQRT(2.0) | 0 201 552023631 | 0 10000001 101 101 010 000 010 011 110 011 001
 +2.0       | 0 202 400000000 | 0 10000010 100 000 000 000 000 000 000 000 000
@@ -656,7 +656,47 @@ COMMON   | 0 | 10000000 | 111 111 111 111 111 111 111 111 110
 COMMON+1 | 0 | 10000000 | 111 111 111 111 111 111 111 111 111
 FDP      | 0 | 10000000 | 111 111 111 111 111 111 111 111 110
 ```
-Notice how earlier clearing the low-order bit has ensured that in the first group the fraction of `COMMON+1` is always less than the fraction of `COMMON`, ensuring that the exponent of the quotient is the same as `COMMON+1`. In the second group, notice that the exponent of `COMMON+1` is always more than `COMMON`, again ensuring the exponent of quotient is the same as `COMMON+1`. In the .99 case, this is only true because the low order bit of \(x\) was dropped.
+In the next step the first approximation, `COMMON+1`, and the division result, `FDP`, must have the same exponent. Notice how this is true for all the examples. To see that it is true in general, we need to look at the even and odd exponent cases. In both cases, \(\frac{1}{2}\le \hat{g}_0< 1\).
+
+In the even case to prevent a change in exponent, we need \(\frac{1}{2}\le\frac{\hat{f}}{\hat{g}_0}<1\). For the lower bound,
+$$
+\begin{align*}
+\frac{1}{2}&\le\frac{\hat{f}}{\hat{g}_0}\\
+\frac{1}{2}&\le \frac{\hat{f}}{\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}}\\
+\frac{9}{32}\hat{f}+\frac{7}{32}+2^{-28}&\le\hat{f}\\
+\frac{7}{32}+2^{-28}&\le\frac{23}{32}\hat{f}\\
+\frac{7+2^{-23}}{23}<\frac{1}{2}&\le\hat{f}.
+\end{align*}
+$$
+For the upper bound,
+$$
+\begin{align*}
+\frac{\hat{f}}{\hat{g}_0&<1\\
+\frac{\hat{f}}{\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}}&<1\\
+\hat{f}&<\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}\\
+\frac{7}{16}\hat{f}<\frac{7}{16}+2^{-27}\\
+\hat{f}<1 < 1+\frac{2^{-24}}{7}.
+\end{align*}
+$$
+In the odd case, to ensure the exponent is increased by 1, we need \(1\le\frac{\hat{f}}{\hat{g}_0<2\). For the lower bound,
+$$
+\begin{align*}
+1&\le\frac{\hat{f}}{\frac{7}{16}\hat{f}+\frac{9}{32}}\\
+\frac{7}{16}\hat{f}+\frac{9}{32}&\le\hat{f}\\
+\frac{9}{32}\le\frac{9}{16}\hat{f}\\
+\frac{1}{2}\le\hat{f}.
+\end{align*}
+$$
+For the upper bound,
+$$
+\begin{align*}
+\frac{\hat{f}}{\frac{7}{16}\hat{f}+\frac{9}{32}}&<2\\
+\hat{f}<\frac{7}{8}\hat{f}+\frac{9}{16}\\
+\frac{\hat{f}}{8}<\frac{9}{16}\\
+\hat{f}<1<\frac{9}{2}.
+\end{align*}
+$$
+There is one other detail to be dealt with. The above is for exact arithmetic. For the `.99` case, `COMMON+1` is 27 1s. If we had not cleared the low bit of \(f\), it would also have been 27 1s and division would have result in a fraction of 1. This would have been shifted right one and the exponent increased. The `ANA` in instruction `MISRT1011` ensures that the value in `COMMON` is less than `COMMON+1` so that the division is not 1 and the exponent is not increased.
 
 ```
        CLA COMMON+1                                                    MISRT1028
@@ -665,7 +705,7 @@ Notice how earlier clearing the low-order bit has ensured that in the first grou
 ```
 We want to average \(\frac{x}{y_0}\) and \(y_0\). Unfortunately, 704 data paths were limited and there isn't a way to add `MQ` and `AC` without going through memory. The `STQ` operation, *Store MQ*, copies `MQ` into the effective address. We then add the two values.
 
-But `ADD` is an integer add, not a floating point add. How can this work? The exponents of \(y_n\) and \(\frac{x}{y_n}\) will both be the same, \(d\), so the points are aligned and there is no need to shift fractions and adjust exponents during the addition. The value \(2d\) will be in `AC[P-8]`. This is even, so `AC[8]` will be 0 unless there is a carry from adding the fractions. Both \(\hat{g}\) and \(\hat{g}\) are at least \(\frac{1}{2}\) but less than 1, so there will be a carry and `AC[8]` will be 1. The result is the normalized floating point sum, shifted left by 1. 
+But `ADD` is an integer add, not a floating point add. How can this work? The exponents of \(y_n\) and \(\frac{x}{y_n}\) will both be the same, \(d\), so the points are aligned and there is no need to shift fractions and adjust exponents during the addition. The value \(2d\) will be in `AC[P-8]`. This is even, so `AC[8]` will be 0 unless there is a carry from adding the fractions. Since fraction bit 1 of both `COMMON+1` and `FDP` are 1, there will be a carry and `AC[8]` will be 1. The result is the normalized floating point sum, shifted left by 1. 
 ```
        LRS 1                                                           MISRT1031
 ```
@@ -675,7 +715,7 @@ The `LRS` operation, `Long Right Shift`, treats `AC[Q-35]MQ[1-35]` as one wide r
 ```
 The `RND` operation, *Round*, adds 1 to `AC` if `MQ[1]` is 1. Since this is immediately followed by a second application of Heron's formula, which will more than correct for an error in the low order bit of the fraction, this would seem to be an unnecessary operation, and it would be if floating point arithmetic were being used.
 
-Notice how for the ".99" case, the combination of the `ANA` in `MISRT1011` and the `RND` in `MISRT1032` work together to ensure that the quotient will not increase the exponent and the final fraction will at the end of this application of Heron's formula will be greater than `COMMON` for the next application of Heron's formula.
+Notice how for the ".99" case, the combination of the `ANA` in `MISRT1011` and the `RND` in `MISRT1032` work together to ensure that the quotient will not increase the exponent and the final fraction at the end of this application of Heron's formula will be greater than `COMMON` for the next application of Heron's formula.
 ```
          | S | QP | CHAR     | FRACTION                            | MQ 1
 x=.25
