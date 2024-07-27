@@ -6,17 +6,19 @@ draft: true
 ---
 # Abstract
 
-The IBM 704, introduced in 1954, was the first commercial computer with floating point hardware support and core memory. The SHARE user group was formed to share routines and programs among users. This led to assemblers, compilers, and libraries of routines, some of which have been restored from tapes that have survived. One routine, `SRT1`, computes a floating point square root. Surprisingly, it is able to do so executing only two floating point instructions. Here we describe how this is accomplished.
+The `SRT1` square root routine in the IBM 704 SHARE library computes a floating point square root performing only two floating point operations. IBM introduced the 704 in 1954. FORTRAN was developed for the 704, and it was the first commercial computer with core memory and hardware support for floating point. The SHARE user group was formed to share routines and programs among users. Some features introduced in the SHARE assembler are still with us. Here we describe the implementation of `SRT1`, illustrating how programming was done in the early days.
 
 # The source
 
-In 1955 some IBM 704 users, including [Roy Nutt](https://history.computer.org/pioneers/nutt.html), formed a group called [SHARE](https://www.share.org/) to share programs and other information related to IBM computers. Programs were distributed on magnetic tape. [Paul Pierce's Computer Collection](https://piercefuller.com/collect/index.html) includes the contents of a number of early computer tapes, including the [IBM SHARE Library](https://www.piercefuller.com/library/share.html) on some tapes from Yale. The [Yale SHARE Tape 2 29-508](https://www.piercefuller.com/library/kyu2.html) contains the square root routine.
+In 1955 some IBM 704 users formed a group called [SHARE](https://www.share.org/) to share programs and other information related to IBM computers. One of these users was [Roy Nutt](https://history.computer.org/pioneers/nutt.html), who wrote the [SHARE Assembler Program (SAP)](https://sky-visions.com/ibm/704/uasap.pdf#page=2) that was used to assemble many of these programs and routines. Programs were distributed on magnetic tape. [Paul Pierce's Computer Collection](https://piercefuller.com/collect/index.html) includes the contents of a number of early computer tapes, including the [IBM SHARE Library](https://www.piercefuller.com/library/share.html) on some tapes from Yale. The [Yale SHARE Tape 2 29-508](https://www.piercefuller.com/library/kyu2.html) contains the square root routine.
 
-The files corresponding to the recovered tapes are essentially the raw tape contents and require some pre-processing. Tapes contain a sequence of tape files. Each tape file is a sequence of records. Each record corresponds contains the contents of one or more cards, which may be binary or character (symbolic). Character format was either 72 characters or 80 characters per card, depending on the equipment. The 704 could only read/write the first 72 characters of a card, but the tapes were produced on later processors in the same family.
+The files on Paul Pierce's site are essentially the raw contents of the tapes and require some reverse engineering and pre-processing. A tape contains a sequence of tape files, each consisting of a sequence of records of varying length separated by regions of erased tape. Each record contains the contents of one or more complete IBM computer cards, which may be in either binary or character (symbolic) format. One card could hold up to 80 characters, or 960 bits, but the IBM 704 could only read/write 72 characters or 864 bits. Some tapes have records for 72 character cards and some have records for 80 character cards, possibly depending on their age.
+
+Each physical card corresponds to one line; there is no "End of line" character. The character encodings used on these tapes are variants of six bit `BCD`, which is a simple transformation of the Hollerith character encoding used on the cards. Digits and uppercase letter encodings were consistent, but the encodings for symbols varied from site to site. Not all symbols in use appear in Unicode. Here they characters have been converted to ASCII.
 
 ## Meta-information
 
-Each routine on the tape is preceded by a header record of meta-information for the routine. The headers are in a BCD character format and have been converted to ASCII. There is quite a bit of variability among the headers.
+Each routine on the tape is preceded by a header record of meta-information for the routine. There is quite a bit of variability among the headers.
 
 For `SRT1` the header record is:
 ```
