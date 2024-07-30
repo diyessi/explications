@@ -12,7 +12,7 @@ The `SRT1` square root routine in the IBM 704 SHARE library computes a floating 
 
 In 1955 some IBM 704 users formed a group called [SHARE](https://www.share.org/) to share programs and other information related to IBM computers. One of these users was [Roy Nutt](https://history.computer.org/pioneers/nutt.html), who wrote the [SHARE Assembler Program (SAP)](https://sky-visions.com/ibm/704/uasap.pdf#page=2) that was used to assemble many of these programs and routines. Programs were distributed on magnetic tape. [Paul Pierce's Computer Collection](https://piercefuller.com/collect/index.html) includes the contents of a number of early computer tapes, including the [IBM SHARE Library](https://www.piercefuller.com/library/share.html) on some tapes from Yale. The [Yale SHARE Tape 2 29-508](https://www.piercefuller.com/library/kyu2.html) contains the square root routine.
 
-The files on Paul Pierce's site are essentially the raw contents of the tapes and require some reverse engineering and pre-processing. A tape contains a sequence of tape files, each consisting of a sequence of records of varying length separated by regions of erased tape. Each record contains the contents of one or more complete IBM computer cards, which may be in either binary or character (symbolic) format. One card could hold up to 80 characters, or 960 bits, but the IBM 704 could only read/write 72 characters or 864 bits. Some tapes have records for 72 character cards and some have records for 80 character cards, possibly depending on their age.
+The files on Paul Pierce's site are essentially the raw contents of the tapes and require some reverse engineering and pre-processing. A tape contains a sequence of tape files, each consisting of a sequence of records of varying length separated by regions of erased tape. Each record contains the contents of one or more complete [IBM punched cards](https://en.wikipedia.org/wiki/Punched_card), which may be in either binary or character (symbolic) format. One card could hold up to 80 characters, or 960 bits, but the IBM 704 could only read/write 72 characters or 864 bits. Some tapes have records for 72 character cards and some have records for 80 character cards, possibly depending on their age.
 
 Each physical card corresponds to one line; there is no "End of line" character. The character encodings used on these tapes are variants of six bit `BCD`, which is a simple transformation of the Hollerith character encoding used on the cards. Digits and uppercase letter encodings were consistent, but the encodings for symbols varied from site to site. Not all symbols in use appear in Unicode. Here they characters have been converted to ASCII.
 
@@ -35,7 +35,7 @@ Most of the information can be understood:
 
 ## The source code
 
-The source code is also in a BCD character format on the tape and has been converted to ASCII:
+The complete source code converted to ASCII is:
 ```
        REM SQUARE ROOT, FLOATING POINT                                 MISRT1000
        REM   TIME (AV.)= 102 CYCLES= 1.224 M.S.                        MISRT1001
@@ -87,28 +87,64 @@ The source code is also in a BCD character format on the tape and has been conve
 
 # Understanding the source
 
-The source is easily recognized as being written in an assembly language. The assembler is [SHARE Assembler Program (SAP)](https://sky-visions.com/ibm/704/uasap.pdf#page=2), written by [Roy Nutt](https://history.computer.org/pioneers/nutt.html). Each line corresponds to one 80 column IBM punched card. The punched card character set and the closely related six bit BCD encoding is limited to uppercase letters and some symbols. Character positions, numbered from 1 to 80, are called columns, not because of the columns formed in the source listing, but because of the column of punched holes that encodes the character on a card. Only columns 1 through 72 can be read by the IBM 704 but could be read if the cards were transferred to tape.
+Each line contains exactly 80 characters and corresponds to one 80 column IBM punched card. Character positions, numbered from 1 to 80, are called columns, not because of the columns formed in the source listing, but because of the column of punched holes that encodes the character on a card. Since the IBM 704 could only read the first 72 columns, the last 8 characters were ignored.
 
-It was common to use columns on the right side of the card to add sequencing information that was ignored by the assembler. If the cards were accidentally dropped, a punched card sorter, a common piece of office equipment at the time, could be used to put them back in order, although for 46 cards it was probably faster to sort them by hand.
+It was common to use columns on the right side of the card to add sequencing information that was ignored by the assembler. If the cards were accidentally dropped, a punched card sorter, a common piece of office equipment at the time, could be used to put them back in order, although for 46 cards it was probably faster to sort them by hand. Here they will serve as a way to reference particular lines.
 
-Columns 8 through 10 contain a three character operation which determine the syntax for the line.
+## The opcode
+
+Columns 8 through 10 contain a three character operation which determine the syntax for the line. Detailed descriptions of the operations can be found in [IBM 704 electronic data-processing machine](https://bitsavers.org/pdf/ibm/704/24-6661-2_704_Manual_1955.pdf) while pseudo-ops are described in SAP assembler documentation.
 
 ## Comments
 
-Any characters separated by at least one space from the last operand are comments. If the assembler reads the program from cards, characters in columns 73 through 80 will not be seen and will not show up in a listing, while they are available if the assembler is using tape input. The `REM` (remark) pseudo-op is used for lines that only contain comments. Early versions of the assembler required two spaces between `REM` and the comment, but the first `REM` above indicates that this requirement was later dropped.
+Any characters separated by at least one space from the last operand are comments. If the assembler reads the program from cards, characters in columns 73 through 80 will not be seen and will not show up in a listing, while when read from tape they are available to the assembler. The `REM` (remark) pseudo-op is used for lines that only contain comments. Early versions of the assembler required two spaces between `REM` and the comment, but the first `REM` above indicates that this requirement was later dropped.
 ```
        REM  THIS IS A REMARK COMMENT
        CLA X,2 THIS IS AN INSTRUCTION COMMENT
 ```
 
-## Memory addressing
+## Memory
 
-For the purposes of understanding the `SQRT` implementation, IBM 704 addresses are 15 bits and each address corresponds to a 36 bit word. The high order bit is designated `S`, followed by the *magnitude*, bits `1` through `35`, with `35` being the low order bit. Here, for a word `W`, `W[S]` or \(W_S\) is the value of the sign bit, `W[2]` or \(W_2\) is the value of bit 2, and `W[2-5]` or \(W_{[2-5]}\) is the value of bits 2 through 5. Words are written in octal while addresses are usually in decimal.
+In the 704 documentation, a *register* is any place a value can be stored. For the purposes of understanding the `SQRT` implementation, IBM 704 addresses are 15 bits and each address corresponds to a 36 bit word. In a word, the high bit designated `S`, followed by bits `1` through `35`. Values are normally written in octal, but we will usually use binary. For the word `W`, `W[S]` or \(W_S\) will designate the value of the `S` bit, `W[2]` or \(W_2\) is the value of bit 2, and `W[2-5]` or \(W_{[2-5]}\) is the value of bits 2 through 5. Words are written in octal while addresses are usually written in decimal.
+```
+                 1   1   1   2   2   2   3   3 3
+S 1  3   6   9   2   5   8   1   4   7   0   3 5
+0 00 000 000 000 000 000 000 000 000 000 000 000
+```
 
-Two registers are used for arithmetic operations:
- - `AC` is a 38 bit *accumulator* register with bits `S`, `Q`, `P`, `1-35` from high to low. The `Q` and `P` bits extend the arithmetic range available for some intermediate results. When `AC` is written to memory, the `Q` and `P` bits are not written to memory, and when memory is written to `AC`, `Q` and `P` will be 0.
- - `MQ` is a 36 bit *multiplier quotient* register
-Some operations treat the pair of `AC` and `MQ` similar to a wide register.
+## Architecture
+
+The 704 was organized like a basic calculator. Most instructions have as input a 38 bit *accumulator* register called `AC` and the contents of a memory location, with the result becoming the new value for `AC`. The `AC` register has two additional bits positions, `Q` and `P`, between `S` and 1:
+```
+                    1   1   1   2   2   2   3   3 3
+S Q P1  3   6   9   2   5   8   1   4   7   0   3 5
+0 0 000 000 000 000 000 000 000 000 000 000 000 000
+```
+
+For multiplication, division, and some shifting operations, a second 36 bit *multiplier quotient* register, `MQ`, is also used.
+
+## Instructions
+
+All instructions use one word. Most instructions contain an *address* in bits 21-35 and a *tag* in bits 18-20. Some instructions contain a 15 bit *decrement* in bits 3-17. In the original Lisp implementation, a `CONS` cell was one word, and `CAR` was the contents of the address register and `CDR` was the contents of the decrement register.
+
+In assembly, the first six columns are an optional label for the address that will be associated with the instruction. Any spaces will be removed, so "OLD X" and "OLDX" are the same label. Column 7 must contain a blank. Columns 8 through 10 contain the opcode or pseudo-op and column 11 must be blank. For a regular operation, starting at column 12 are up to three comma-separated expressions containing no blanks followed by a blank. The three expressions are the address, tag, and decrement. If not specified, they default to 0.
+
+## Effective Address
+
+There are three 15 bit *index* registers, called 1, 2, and 4. Most instructions are *indexable* and compute an effective address called `Y`. If a tag is specified, it must be a value from 0 through 7, which specifies a bit mask for selecting from zero to three index registers. The contents of the selected index registers are ORed together and subtracted from the address field in the instruction to obtain `Y`, which is used as a source or destination, depending on the operation. If the tag is 0, nothing is subtracted from the instruction address.
+
+As an example, to add the contents of addresses `X` and `Y` in memory and store the result in `Z`:
+```
+       CLA X     AC = X from memory
+       ADD Y     AC += Y from memory
+       STO Z     Z in memory = AC 
+```
+If instead index register 2 contains the twos complement of the address of a pair of numbers and the sum is to be stored in `Y`,
+```
+       CLA 0,2   AC = first value in pair
+       ADD 1,2   AC += second value in pair
+       STO Z     Z in memory = AC 
+```
 
 # Linkage
 
