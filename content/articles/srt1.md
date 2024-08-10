@@ -89,6 +89,8 @@ The complete source code converted to ASCII is:
 
 Each line contains exactly 80 characters and corresponds to one 80 column IBM punched card. Character positions, numbered from 1 to 80, are called columns, not because of the columns formed in the source listing, but because of the column of punched holes that encodes the character on a card. Since the IBM 704 could only read the first 72 columns, the last 8 characters were ignored.
 
+![MISRT1009 Card](images/MISRT1009.png)
+
 It was common to use columns on the right side of the card to add sequencing information that was ignored by the assembler. If the cards were accidentally dropped, a punched card sorter, a common piece of office equipment at the time, could be used to put them back in order, although for 46 cards it was probably faster to sort them by hand. Here they will serve as a way to reference particular lines.
 
 ## The opcode
