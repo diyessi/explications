@@ -6,19 +6,53 @@ draft: true
 ---
 # Abstract
 
-The `SRT1` square root routine in the IBM 704 SHARE library computes a floating point square root performing only two floating point operations. IBM introduced the 704 in 1954. FORTRAN was developed for the 704, and it was the first commercial computer with core memory and hardware support for floating point. The SHARE user group was formed to share routines and programs among users. Some features introduced in the SHARE assembler are still with us. Here we describe the implementation of `SRT1`, illustrating how programming was done in the early days.
+The `SRT1` square root routine from the IBM 704 SHARE library executes only two floating point instructions to compute a floating point square root. The 704 was introduced by IBM in 1954. It was the first commercial computer with core memory and hardware support for floating point. The first version of FORTRAN was co-developed with the 704. Here we describe the implementation of `SRT1`, illustrating some early programming techniques.
 
 # The source
 
-In 1955 some IBM 704 users formed a group called [SHARE](https://www.share.org/) to share programs and other information related to IBM computers. One of these users was [Roy Nutt](https://history.computer.org/pioneers/nutt.html), who wrote the [SHARE Assembler Program (SAP)](https://sky-visions.com/ibm/704/uasap.pdf#page=2) that was used to assemble many of these programs and routines. Programs were distributed on magnetic tape. [Paul Pierce's Computer Collection](https://piercefuller.com/collect/index.html) includes the contents of a number of early computer tapes, including the [IBM SHARE Library](https://www.piercefuller.com/library/share.html) on some tapes from Yale. The [Yale SHARE Tape 2 29-508](https://www.piercefuller.com/library/kyu2.html) contains the square root routine.
+In 1955 some IBM 704 users formed a group called [SHARE](https://www.share.org/) to share programs and other information related to IBM computers. One of the founders was [Roy Nutt](https://history.computer.org/pioneers/nutt.html), who wrote the [SHARE Assembler Program (SAP)](https://sky-visions.com/ibm/704/uasap.pdf#page=2) that was used to assemble many of these programs and routines. SHARE distributed programs on magnetic tape. [Paul Pierce's Computer Collection](https://piercefuller.com/collect/index.html) includes recovered contents of a number of early computer tapes, including the [IBM SHARE Library](https://www.piercefuller.com/library/share.html). The [Yale SHARE Tape 2 29-508](https://www.piercefuller.com/library/kyu2.html) contains the `SRT1` square root routine.
 
-The files on Paul Pierce's site are essentially the raw contents of the tapes and require some reverse engineering and pre-processing. A tape contains a sequence of tape files, each consisting of a sequence of records of varying length separated by regions of erased tape. Each record contains the contents of one or more complete [IBM punched cards](https://en.wikipedia.org/wiki/Punched_card), which may be in either binary or character (symbolic) format. One card could hold up to 80 characters, or 960 bits, but the IBM 704 could only read/write 72 characters or 864 bits. Some tapes have records for 72 character cards and some have records for 80 character cards, possibly depending on their age.
+# Software development
 
-Each physical card corresponds to one line; there is no "End of line" character. The character encodings used on these tapes are variants of six bit `BCD`, which is a simple transformation of the Hollerith character encoding used on the cards. Digits and uppercase letter encodings were consistent, but the encodings for symbols varied from site to site. Not all symbols in use appear in Unicode. Here they characters have been converted to ASCII.
+Today software is written using an editor on a computer to create one or more source files plus some additional files that describe how the source files are to be processed and combined. When problems occur, the appropriate files are modified and the process is repeated. In the 1950s this would have been considered an incredibly wasteful use of very limited computing resources.
+
+At least according to books of the era, software development would start with a detailed off-line analysis of the problem to be solved. In many environments, a flow chart would be produced showing all the steps of the program. The flow chart would be carefully checked to ensure all cases were handled. Hand simulations would be performed. Then a coder would convert the flow chart to a program on paper forms. This would again be carefully checked. In the case of the IBM 704, A key punch operator would use a card punch to create one [IBM punched card](https://en.wikipedia.org/wiki/Punched_card) for each line of the program:
+
+## Punched cards
+
+IBM had been making mechanical and electromechanical punched card equipment years before they got involved with computers. The IBM cards in use at the time originally had 80 columns, numbered 1 through 80, and 10 rows, numbered 0 through 9. A hole punched in a row indicated that column contained the digit corresponding to the row. If there were no punches in a column, it was a blank. Cards were processed vertically. 80 wheels, one for each column, would turn as the card passed over sensors. When a hole was sensed in a column, the wheel for that column would stop, transferring the contents of the card to the wheels.
+
+![Digits](images/digits.png)
+
+There was a demand for being able to store alphanumeric data on cards. There was room for two additional rows on top of the card. The top row was called 12, the second row 11. Rows 12, 11, and 0 (or 10) were called *zone* rows. The uppercase alphabet was encoded using two punches, one in a zone row and one in rows 1 through 9:
+
+![Alphabet](images/alpha.png)
+
+It is possible that `S` was `0-2` rather than `0-1` to avoid having a series of `S` characters weaken the card.
+
+Then there was a demand for some symbols. Some zone-only punches were used for symbols. Row 8 was also added as a row that could be punched in combination with a zone punch and a non-8 digit punch. Unlike the digits and the alphabet, there was some variation between sites and over time for how the symbols were encoded. There are ASCII characters, such as `^`, `{` and `}`, which have no punched card encoding. There are also a few punched card symbols which do not even have Unicode encodings. Following are the encodings in use at the end of the punched card era for characters that were also in ASCII:
+
+![Symbols](images/symbols.png)
+
+
+
+## Getting the program to the computer
+
+![MISRT1009 Card](images/MISRT1009.png)
+
+A punched card had 80 columns and twelve rows. Each character was represented by a unique combination of up to three holes in the column. Punched card equipment was mostly mechanical, which constrained how characters could be encoded. No punches in a column was a blank and a single punch in one of rows 0 through 9 was the corresponding digit. Alphabetic characters were later added by adding rows 11 and 12 at the top of the card and punching a pair of rows, one from rows 0, 11 or 12 and one from rows 1 through 9. As card applications began to require some symbols, additional encodings were added, although not consistently from site to site and over time. Since each card was 80 characters whether they were used or not, there was no "end of line" character.
+
+The IBM 704 could read cards, or at least the first 72 columns, but it could not do much else while reading cards. IBM had equipment for transferring card directly to seven track magnetic tape which could be read much more quickly. Each character on tape used six bits, and the seventh track was a parity track. The transformation from holes punched in a column (Hollerith encoding) to a six bit value (BCD encoding) was simple.
+
+Information on tapes was grouped into records with erased tape between records. To save space, a record would hold multiple cards.
+
+# The SHARE library tape
+
+The files on Paul Pierce's site are essentially the raw contents of the tapes and require some reverse engineering and pre-processing. Each record contains the contents of one or more cards, which may be in either a binary or a character (symbolic) format. Some tapes have records for 72 character cards and some have records for 80 character cards, possibly depending on their age. Here the BCD format has been converted to ASCII.
 
 ## Meta-information
 
-Each routine on the tape is preceded by a header record of meta-information for the routine. There is quite a bit of variability among the headers.
+Each routine on the SHARE tape is preceded by a header record that contains meta-information about the routine. There is quite a bit of variability among the headers.
 
 For `SRT1` the header record is:
 ```
