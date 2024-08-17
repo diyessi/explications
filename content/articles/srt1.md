@@ -8,9 +8,82 @@ draft: true
 
 The `SRT1` square root routine from the IBM 704 SHARE library executes only two floating point instructions to compute a floating point square root. The 704 was introduced by IBM in 1954. It was the first commercial computer with core memory and hardware support for floating point. The first version of FORTRAN was co-developed with the 704. Here we describe the implementation of `SRT1`, illustrating some early programming techniques.
 
+# The IBM 704
+
+## The word
+
+The 704 had a 36 bit word size. Bit positions in a word, from high to low, were called `S` (sign) followed by `1` through `35`:
+
+```
+                 1   1   1   2   2   2   3   3 3
+S 1  3   6   9   2   5   8   1   4   7   0   3 5
+0 10 110 100 011 000 111 001 101 010 000 100 000
+```
+
+Bits 1 through 35 were usually written in octal. The `S` bit could be written as `+/-` for `0/1`, or as `0/1`, or combined with bits 1-2. Spaces could be added, usually in semantically important locations, to improve readability.
+
+Some examples:
+```
++2 64307 1 52040 (instruction format)
++264 307152040 (float format)
+ 264307152040 (36 bits)
+```
+
+For the word `W`, `W[S]` or \(W_S\) will designate the value of the `S` bit, `W[2]` or \(W_2\) is the value of bit 2, and `W[2-5]` or \(W_{[2-5]}\) is the value of bits 2 through 5.
+
+We will usually use binary rather than octal because it is easier to see the results of shifting.
+
+## The memory
+
+There were three core memory options: One or two 4096 word core memory units, or one 32,768 word core memory unit. An address was 12, 13 or 15 bits, depending on the memory size, and referenced an entire word. Characters used a six bit encoding called *BCD*. Six characters would be packed in a word, but there was no way to directly address individual characters in a word. Most operations read or wrote an entire word of memory. A few could read particular subfields of a word, or modify the subfield leaving the remainder of the word intact. This was originally intended to make it easier for programs to modify themselves, but also found uses in relocating loaders, squeezing out a few more bits for small temporaries, and implementing Lisp.
+
+Like dynamic RAM, reading a word from core memory was destructive, so the hardware had to write the value back after a read. Unlike dynamic RAM, core memory did not need to be periodically refreshed, and it retained its contents when powered off.
+
+## Registers
+
+Anything that could store a value was called a register, so each word was called a register. In addition, there were some word-sized and address-sized registers.
+
+`SR`, the *storage register*, was a word-sized register used internally by the CPU.
+
+`AC`, the *accumulator*, was an implicit source and/or destination for most instructions. The `AC` register has two additional bits positions, `Q` and `P`, between `S` and 1. When transferring from `AC` and memory, only `AC[S,1-35]` were transferred. When copying from memory to `AC`, data was copied to `AC[S,1-35]` and `AC[Q,P]` were set to 0.
+```
+AC
+                    1   1   1   2   2   2   3   3 3
+S Q P1  3   6   9   2   5   8   1   4   7   0   3 5
+0 0 000 000 000 000 000 000 000 000 000 000 000 000
+```
+
+`MQ`, the *multiplier quotient*, was a 36 bit register used in some instructions. Some instructions combined `AC` and `MQ[1-35]`.
+```
+                 1   1   1   2   2   2   3   3 3
+S 1  3   6   9   2   5   8   1   4   7   0   3 5
+0 00 000 000 000 000 000 000 000 000 000 000 000
+```
+
+`IC`, the *instruction counter*, was an address-sized register indicating the next instruction to be executed.
+
+`1`, `2` and `4`, were address-sized *index registers*.
+
+## Instructions and the Effective Address
+
+All instructions use one word. Most instructions are *indexable* and compute an effective address called `Y`. Instructions have a three bit field (18-20) called the *tag* and a 15 bit field (21-35) called the *address*. The tag bits are a bit mask that select index registers. The contents of the selected index registers are ORed together and subtracted from the address to obtain the effective address for the instruction. If the tag is 0, the effective address is the address. Some instructions contain a second address-sized field (3-17) called the *decrement*, which is subtracted from the selected index registers.
+
+## Additional 704 information
+
+The book [IBM 704 electronic data-processing machine](https://bitsavers.org/pdf/ibm/704/24-6661-2_704_Manual_1955.pdf) provides a detailed description of the computer. Additional material can be found at 
+ - [IBM 704](https://bitsavers.org/pdf/ibm/704/)
+ - [IBM 709](https://bitsavers.org/pdf/ibm/709/) faster, added additional capabilities
+ - [IBM 7090](https://bitsavers.org/pdf/ibm/7090/) faster and used transistors
+ - [IBM 7094](https://bitsavers.org/pdf/ibm/7094/) even faster
+
+
 # The source
 
 In 1955 some IBM 704 users formed a group called [SHARE](https://www.share.org/) to share programs and other information related to IBM computers. One of the founders was [Roy Nutt](https://history.computer.org/pioneers/nutt.html), who wrote the [SHARE Assembler Program (SAP)](https://sky-visions.com/ibm/704/uasap.pdf#page=2) that was used to assemble many of these programs and routines. SHARE distributed programs on magnetic tape. [Paul Pierce's Computer Collection](https://piercefuller.com/collect/index.html) includes recovered contents of a number of early computer tapes, including the [IBM SHARE Library](https://www.piercefuller.com/library/share.html). The [Yale SHARE Tape 2 29-508](https://www.piercefuller.com/library/kyu2.html) contains the `SRT1` square root routine.
+
+
+
+
 
 # Software development
 
@@ -131,6 +204,8 @@ It was common to use columns on the right side of the card to add sequencing inf
 
 Columns 8 through 10 contain a three character operation which determine the syntax for the line. Detailed descriptions of the operations can be found in [IBM 704 electronic data-processing machine](https://bitsavers.org/pdf/ibm/704/24-6661-2_704_Manual_1955.pdf) while pseudo-ops are described in SAP assembler documentation.
 
+In assembly, the first six columns are an optional label for the address that will be associated with the instruction. Any spaces will be removed, so `OLD X` and `OLDX` are the same label. Column 7 must contain a blank. Columns 8 through 10 contain the opcode or pseudo-op and column 11 must be blank. For a regular operation, starting at column 12 are up to three comma-separated expressions containing no blanks followed by a blank. The three expressions are the address, tag, and decrement. If not specified, they default to 0.
+
 ## Comments
 
 Any characters separated by at least one space from the last operand are comments. If the assembler reads the program from cards, characters in columns 73 through 80 will not be seen and will not show up in a listing, while when read from tape they are available to the assembler. The `REM` (remark) pseudo-op is used for lines that only contain comments. Early versions of the assembler required two spaces between `REM` and the comment, but the first `REM` above indicates that this requirement was later dropped.
@@ -139,48 +214,6 @@ Any characters separated by at least one space from the last operand are comment
        CLA X,2 THIS IS AN INSTRUCTION COMMENT
 ```
 
-## Memory
-
-In the 704 documentation, a *register* is any place a value can be stored. For the purposes of understanding the `SQRT` implementation, IBM 704 addresses are 15 bits and each address corresponds to a 36 bit word. In a word, the high bit designated `S`, followed by bits `1` through `35`. Values are normally written in octal, but we will usually use binary. For the word `W`, `W[S]` or \(W_S\) will designate the value of the `S` bit, `W[2]` or \(W_2\) is the value of bit 2, and `W[2-5]` or \(W_{[2-5]}\) is the value of bits 2 through 5. Words are written in octal while addresses are usually written in decimal.
-```
-                 1   1   1   2   2   2   3   3 3
-S 1  3   6   9   2   5   8   1   4   7   0   3 5
-0 00 000 000 000 000 000 000 000 000 000 000 000
-```
-
-## Architecture
-
-The 704 was organized like a basic calculator. Most instructions have as input a 38 bit *accumulator* register called `AC` and the contents of a memory location, with the result becoming the new value for `AC`. The `AC` register has two additional bits positions, `Q` and `P`, between `S` and 1:
-```
-                    1   1   1   2   2   2   3   3 3
-S Q P1  3   6   9   2   5   8   1   4   7   0   3 5
-0 0 000 000 000 000 000 000 000 000 000 000 000 000
-```
-
-For multiplication, division, and some shifting operations, a second 36 bit *multiplier quotient* register, `MQ`, is also used.
-
-## Instructions
-
-All instructions use one word. Most instructions contain an *address* in bits 21-35 and a *tag* in bits 18-20. Some instructions contain a 15 bit *decrement* in bits 3-17. In the original Lisp implementation, a `CONS` cell was one word, and `CAR` was the contents of the address register and `CDR` was the contents of the decrement register.
-
-In assembly, the first six columns are an optional label for the address that will be associated with the instruction. Any spaces will be removed, so "OLD X" and "OLDX" are the same label. Column 7 must contain a blank. Columns 8 through 10 contain the opcode or pseudo-op and column 11 must be blank. For a regular operation, starting at column 12 are up to three comma-separated expressions containing no blanks followed by a blank. The three expressions are the address, tag, and decrement. If not specified, they default to 0.
-
-## Effective Address
-
-There are three 15 bit *index* registers, called 1, 2, and 4. Most instructions are *indexable* and compute an effective address called `Y`. If a tag is specified, it must be a value from 0 through 7, which specifies a bit mask for selecting from zero to three index registers. The contents of the selected index registers are ORed together and subtracted from the address field in the instruction to obtain `Y`, which is used as a source or destination, depending on the operation. If the tag is 0, nothing is subtracted from the instruction address.
-
-As an example, to add the contents of addresses `X` and `Y` in memory and store the result in `Z`:
-```
-       CLA X     AC = X from memory
-       ADD Y     AC += Y from memory
-       STO Z     Z in memory = AC 
-```
-If instead index register 2 contains the twos complement of the address of a pair of numbers and the sum is to be stored in `Y`,
-```
-       CLA 0,2   AC = first value in pair
-       ADD 1,2   AC += second value in pair
-       STO Z     Z in memory = AC 
-```
 
 # Linkage
 
