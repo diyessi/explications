@@ -756,11 +756,17 @@ At this point, `COMMON` contains \(x\) with exponent \(c\) and fraction \(f\) an
 ```
        CLA COMMON            ITERATE Y(2)                              MISRT1026
 ```
-The `CLA` operation, *Clear and Add*, clears `AC` and adds the contents of the effective address, so `AC` now contains \(x\).
+`AC` now contains \(x\).
 ```
        FDP COMMON+1                                                    MISRT1027
 ```
-The `FDP` operation, *Float Divide or Proceed*, divides `AC` by the contents of the effective address, leaving the normalized quotient in `MQ` and the remainder in `AC`.
+```
+// Float divide or proceed
+FDP {
+  MQ = AC/C(Y); // float divide
+  AC -= MQ*C(Y);
+}
+```
 ```
          | S | CHAR     | FRACTION
 x=.25
@@ -851,17 +857,29 @@ STQ {
 
 \(\frac{x}{y_0}\) and \(y_0\) must be averagef. Unfortunately, 704 data paths were limited and there isn't a way to add `MQ` and `AC` without going through memory.
 
-But `ADD` is an integer add, not a floating point add. How can this work? The exponents of \(y_n\) and \(\frac{x}{y_n}\) will both be the same, \(d\), so the points are aligned and there is no need to shift fractions and adjust exponents during the addition. The value \(2d\) will be in `AC[P-8]`. This is even, so `AC[8]` will be 0 unless there is a carry from adding the fractions. Since fraction bit 1 of both `COMMON+1` and `FDP` are 1, there will be a carry and `AC[8]` will be 1. The result is the normalized floating point sum, shifted left by 1. 
+But `ADD` is an integer add, not a floating point add. How can this work? The exponents of \(y_n\) and \(\frac{x}{y_n}\) will both be the same, \(d\), so the points are aligned and there is no need to shift fractions and adjust exponents during the addition. The value \(2d\) will be in `AC[P-8]`. This is even, so `AC[8]` will be 0 unless there is a carry from adding the fractions. Since fraction bit 1 of both `COMMON+1` and `FDP` are 1, there will be a carry and `AC[8]` will be 1. The result is the normalized floating point sum, shifted left by 1 and needs to be shifted right:
 ```
        LRS 1                                                           MISRT1031
 ```
-The `LRS` operation, `Long Right Shift`, treats `AC[Q-35]MQ[1-35]` as one wide register and shifts the contents right 1, putting the low bit of the fraction in `MQ[1]`.
+```
+// Long right shift
+LRS {
+  AC[Q-35]MQ[1-35] >>= (Y % 256);
+  MQ[S] = AC[S];
+}
+```
+
 ```
        RND                     PREVENT CHAR DISAGREEMENT               MISRT1032
 ```
-The `RND` operation, *Round*, adds 1 to `AC` if `MQ[1]` is 1. Since this is immediately followed by a second application of Heron's formula, which will more than correct for an error in the low order bit of the fraction, this would seem to be an unnecessary operation, and it would be if floating point arithmetic were being used.
-
-Notice how for the ".99" case, the combination of the `ANA` in `MISRT1011` and the `RND` in `MISRT1032` work together to ensure that the quotient will not increase the exponent and the final fraction at the end of this application of Heron's formula will be greater than `COMMON` for the next application of Heron's formula.
+```
+// Round
+// Add MQ[1] to AC[Q-35]
+RND {
+  AC[Q-35] += MQ[1]'
+}
+```
+Since this is immediately followed by a second application of Heron's formula, which will more than correct for an error in the low order bit of the fraction, this would seem to be an unnecessary operation, and it would be if floating point arithmetic were being used. But on closer inspection, notice how for the ".99" case, the combination of the `ANA` in `MISRT1011` and the `RND` in `MISRT1032` work together to ensure that the quotient will not increase the exponent and the final fraction at the end of this application of Heron's formula will be greater than `COMMON` for the next application of Heron's formula.
 ```
          | S | QP | CHAR     | FRACTION                            | MQ 1
 x=.25
