@@ -445,11 +445,18 @@ Although the comment refers to `CHAR MOD 1` this actually leaves \(c \mod 2\) in
 .70 | 0 | 00 | 00000000 | 000 000 000 000 000 000 000 000 000
 .99 | 0 | 00 | 00000000 | 000 000 000 000 000 000 000 000 000
 ```
-You might expect that `AC` would next be tested to see if it was 0 and then split the computation into two cases, one for even exponents and one for odd exponents. Instead, both cases will be handled at the same time.
+`AC` could next be tested to see if it was 0 and then split the computation into two cases, one for even exponents and one for odd exponents. Instead, both cases will be handled at the same time.
 ```
        ARS 1                                                           MISRT1014
 ```
-`ARS` is *accumulator right shift*, in this case by 1 bit. `ARS` shifts the bits in `Q-35`, shifting in 0s from the left and dropping bits on the right. The `S` bit is not changed. Bit 9, the first bit of the fraction, now contains the low bit of the characteristic.
+```
+// Accumulator right shift
+// Shift AC[Q-35] right by the address field
+ARS {
+  AC[Q-35] >>= (IC[address] % 256);
+}
+```
+AC (except for the sign) is shifted right by 1. Bit 9, the first bit of the fraction, now contains the low bit of the characteristic.
 ```
  x  | S | QP | CHAR     | FRACTION
     | 0 | 00 | 00000000 | C[8]00 000 000 000 000 000 000 000 000
@@ -464,9 +471,14 @@ Next,
 ```
        ADD COMMON                                                      MISRT1015
 ```
-The `ADD` operation sets `AC` to the integer addition of `AC` and the contents of the effective address.
-
-Since `COMMON` is normalized, the first bit of the fraction is 1. If `AC[9] = 1` (odd \(c\)) then adding `COMMON` to `AC` will add 1 to the first bit of the fraction, turning it to 0, and carry into the characteristic, adding 1 to it. This may generate a carry into `AC[P]`. For this part, it will be simplest to treat the characteristic as `AC[Q-8]`. This gives an even characteristic of \(c+c_8\) and a fraction of \(\hat{f}-\frac{c_8}{2}\).
+```
+// Add
+// Add the value in the effective address to AC
+ADD {
+  AC += C(Y);
+}
+```
+Since `COMMON` is normalized, the first bit of the fraction is 1. If `AC[9] = 1` (odd \(c\)) then adding `COMMON` to `AC` will add 1 to the first bit of the fraction, turning it to 0, and carry into the characteristic, adding 1 to it. This may generate a carry into `AC[P]`. It is simplest here to treat the characteristic as `AC[Q-8]`. This gives an even characteristic of \(c+c_8\) and a fraction of \(\hat{f}-\frac{c_8}{2}\).
 ```
  x  | S |  CHAR       | FRACTION
     | 0 | C+C[8]      | (1-C[8]) F[2-26]0
@@ -498,9 +510,9 @@ COMMON+1
 
 ## Fraction
 
-The computation of \(d\) is almost complete, but what is going on with the fraction? This is the beginning of a linear approximation \(\hat{g}_0\) to \(\hat{g}\). 
+The computation of \(d\) is almost complete, but what is going on with the fraction? This is the beginning of the first linear approximation \(\hat{g}_0\) of \(\hat{g}\). 
 
-Recall that there are two cases for the fraction, one for an odd exponent and one for an even exponent. In each case, \(\frac{1}{2}\le \hat{f}<1\), but with odd exponents we need to compute \(\sqrt{\frac{f}{2}}\) and with the even exponent \(\sqrt{\hat{f}}\). These can be compined by computing \(\sqrt{s\hat{f}}\) where \(s\) is \(\frac{1}{2}\) for odd exponents and 1 for even exponents. The linear approximation must match \(\sqrt{s\hat{f}}\) when \(\hat{f}\) is \(\frac{1}{2}\) and 1. Then
+Recall that there are two cases for the fraction, one for an odd exponent and one for an even exponent. In each case, \(\frac{1}{2}\le \hat{f}<1\), but with odd exponents \(\sqrt{\frac{f}{2}}\) must be computed and with the even exponent \(\sqrt{\hat{f}}\). These can be combined by computing \(\sqrt{s\hat{f}}\) where \(s\) is \(\frac{1}{2}\) for odd exponents and 1 for even exponents. The linear approximation must match \(\sqrt{s\hat{f}}\) when \(\hat{f}\) is \(\frac{1}{2}\) and 1. Then
 $$
 \begin{align*}
 \hat{g}_0&=\sqrt{\frac{s\hat{f}}{2}}+\left(\hat{f}-\frac{1}{2}\right)\left(\sqrt{s\hat{f}}-\sqrt{\frac{sf}{2}}\right)\\\\
@@ -523,9 +535,17 @@ $$
 ```
        ALS 10                                                          MISRT1018
 ```
-The `ALS` operation, *accumulator left shift*, shifts `AC` left by 10 bits. As with `ARS`, the `S` bit is not changed and `Q-35` are treated as a group with 0s shifted in from the right. If a 1 bit is shifted into or through `P` the overflow indicator is set.
+```
+// Accumulator left shift
+// Shift AC (except the sign) by the address
+ALS {
+  AC[Q-35] <<= IC[address];
+}
+```
 
-This will shift the fraction so that its first bit is in `AC[Q]`. It will be simplest to treat `AC[Q-35]` as one field in this step:
+`AC` is shifted left by 10 bits. If a 1 bit is shifted into or through `P` the overflow indicator is set.
+
+The fraction is shifted so that its first bit is in `AC[Q]`. It will be simplest to treat `AC[Q-35]` as one field in this step:
 ```
  x  | S | Q-35
     | 0 | 0(1-C[8])F[2-26]*2^10
@@ -543,7 +563,21 @@ Next,
        PBT                                                             MISRT1019
        COM                                                             MISRT1020
 ```
-The `PBT` operation, *P Bit test*, skips the next instruction if `AC[P] = 1`, i.e. if \(c_8=0\). The `COM` operation complements `AC[Q-35]`.
+```
+// P Bit Test
+// Skip the next instruction if P is 1
+PBT {
+  if (1 == AC[P]) {
+    IC++;
+  }
+}
+
+// Complement magnitude
+COM {
+  AC[Q-35] = ~AC[Q-35];
+}
+```
+If \(c_8=0\) the next instruction is skipped. The `COM` operation complements `AC[Q-35]`.
 ```
  x  | S | Q-35
     | 0 | c8 ? (2^38-1)-00F[2-26]*2^10 : 01F[2-26]*2^10
@@ -635,7 +669,7 @@ $$
 \frac{7}{16}f-\frac{3}{16}-2^{-27}+\frac{15}{32}+2^{-27}&=\frac{7}{16}f+\frac{9}{32}&c_8=1.
 \end{align*}
 $$
-Aside from the \(2^-{27}\) in the even case, these correspond to the linear approximation determined earlier.  Why the \(2^{-27}\)? We want to subtract a multiple of the fraction in the even case by adding, which requires a twos complement, but the 704 only has ones complement, which will be off by 1, or \(2^{-27}\). Including the \(2^{-27}\) in the lumped constant will correct the odd case, while leaving it out would leave the even case correct. When \(x=1\) the characteristic is odd so including the \(2^{-27}\) in the odd case makes the linear approximation exact.
+Aside from the \(2^-{27}\) in the even case, these correspond to the linear approximation determined earlier.  Why the \(2^{-27}\)? In the even case a multiple of the fraction is to be subtracted by adding, which requires a twos complement. The 704 only has ones complement, which will be off by 1, or \(2^{-27}\). Including the \(2^{-27}\) in the lumped constant corrects the odd case, while leaving it out leaves the even case correct. When \(x=1\) the characteristic is odd so including the \(2^{-27}\) in the odd case makes the linear approximation exact.
 ```
  x  | S | QP | CHAR     | FRACTION
 .25 | 0 | 00 | 10000000 | 100 000 000 000 000 000 000 000 000
@@ -697,9 +731,9 @@ $$
 &=\frac{\epsilon_n^2}{2y_n}
 \end{align*}
 $$
-From this we see that whether \(\epsilon_0\) is negative or positive, \(\epsilon_n\) is positive for \(n>0\). The linear approximation is exact for odd exponents when \(\hat{f}=1\) and otherwise less than \(\sqrt{x}\).
+Whether \(\epsilon_0\) is negative or positive, \(\epsilon_n\) is positive for \(n>0\). The linear approximation is exact for odd exponents when \(\hat{f}=1\) and otherwise less than \(\sqrt{x}\).
 
-We can estimate the error after \(n\) iterations:
+The error after \(n\) iterations can be estimated as:
 $$
 \begin{align*}
 \epsilon_n&=\frac{1}{2}\frac{\epsilon_n^2}{\epsilon_n+\sqrt{x}}\\\\
@@ -759,9 +793,9 @@ COMMON   | 0 | 10000000 | 111 111 111 111 111 111 111 111 110
 COMMON+1 | 0 | 10000000 | 111 111 111 111 111 111 111 111 111
 FDP      | 0 | 10000000 | 111 111 111 111 111 111 111 111 110
 ```
-In the next step the first approximation, `COMMON+1`, and the division result, `FDP`, must have the same exponent. Notice how this is true for all the examples. To see that it is true in general, we need to look at the even and odd exponent cases. In both cases, \(\frac{1}{2}\le \hat{g}_0< 1\).
+In the next step the first approximation, `COMMON+1`, and the division result, `FDP`, must have the same exponent. Notice how this is true for all the examples. To see that it is true in general, the even and odd exponent cases must be examined. In both cases, \(\frac{1}{2}\le \hat{g}_0< 1\).
 
-In the even case to prevent a change in exponent, we need \(\frac{1}{2}\le\frac{\hat{f}}{\hat{g}_0}<1\). For the lower bound,
+In the even case to prevent a change in exponent, ensure that \(\frac{1}{2}\le\frac{\hat{f}}{\hat{g}_0}<1\). For the lower bound,
 $$
 \begin{align*}
 \frac{1}{2}&\le\frac{\hat{f}}{\hat{g}_0}\\
@@ -774,14 +808,16 @@ $$
 For the upper bound,
 $$
 \begin{align*}
-\frac{\hat{f}}{\hat{g}_0&<1\\
+\frac{\hat{f}}{\hat{g}_0}&<1\\
 \frac{\hat{f}}{\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}}&<1\\
 \hat{f}&<\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}\\
 \frac{7}{16}\hat{f}<\frac{7}{16}+2^{-27}\\
 \hat{f}<1 < 1+\frac{2^{-24}}{7}.
 \end{align*}
 $$
-In the odd case, to ensure the exponent is increased by 1, we need \(1\le\frac{\hat{f}}{\hat{g}_0<2\). For the lower bound,
+In the odd case, to ensure the exponent is increased by 1, ensure that \(1\le\frac{\hat{f}}{\hat{g}_0}<2\).
+
+For the lower bound,
 $$
 \begin{align*}
 1&\le\frac{\hat{f}}{\frac{7}{16}\hat{f}+\frac{9}{32}}\\
@@ -806,7 +842,14 @@ There is one other detail to be dealt with. The above is for exact arithmetic. F
        STQ COMMON+1                                                    MISRT1029
        ADD COMMON+1            AVERAGE                                 MISRT1030
 ```
-We want to average \(\frac{x}{y_0}\) and \(y_0\). Unfortunately, 704 data paths were limited and there isn't a way to add `MQ` and `AC` without going through memory. The `STQ` operation, *Store MQ*, copies `MQ` into the effective address. We then add the two values.
+```
+// Store MQ
+STQ {
+  C(Y) = MQ
+}
+```
+
+\(\frac{x}{y_0}\) and \(y_0\) must be averagef. Unfortunately, 704 data paths were limited and there isn't a way to add `MQ` and `AC` without going through memory.
 
 But `ADD` is an integer add, not a floating point add. How can this work? The exponents of \(y_n\) and \(\frac{x}{y_n}\) will both be the same, \(d\), so the points are aligned and there is no need to shift fractions and adjust exponents during the addition. The value \(2d\) will be in `AC[P-8]`. This is even, so `AC[8]` will be 0 unless there is a carry from adding the fractions. Since fraction bit 1 of both `COMMON+1` and `FDP` are 1, there will be a carry and `AC[8]` will be 1. The result is the normalized floating point sum, shifted left by 1. 
 ```
@@ -944,6 +987,13 @@ RND      | 0 | 00 | 10000000 | 111 111 111 111 111 111 111 111 111
 ```
        TOV 2,4               NORMAL RETURN WITH Y(4)                   MISRT1041
 ```
-Computing a square root should not result in an overflow, but the overflow indicator was set in the `ALS 10` instruction.
-
-The `TOV` operation, *Transfer on Overflow*, clears the overflow indicator and transfers to the effective address if the overflow indicator is on. Otherwise, it continues with the next instruction. Today it would be considered good practice to follow the `TOV` instruction with a branch to some kind of report of an assertion violated, but in 1958 using the `TOV` to both clear the overflow indicator and return was considered efficient.
+```
+// Transfer on overflow
+TOV {
+  if (1 == overflow) {
+    IC = Y;
+    overflow = 0;
+  }
+}
+```
+Computing a square root should not result in an overflow, but the overflow indicator is always set in the `ALS 10` instruction at `MISRT1018`. This clears the overflow and continues execution at the normal (second) continuation.
