@@ -336,15 +336,15 @@ The effective address is word 1 in the call vector, the alarm address. Since `AC
 
 ## Taking advantage of the representation
 
-At this point it is known that \(x>0\) and \(y > 0\).
+At this point it is known that \(x>0\) and thus \(y > 0\).
 
 Since \(x=y^2\), \(\hat{c}\) and \(\hat{f}\) can be computed from \(\hat{d}\) and \(\hat{g}\):
 $$
 2^{\hat{c}}\hat{f}=x=y^2=2^{2\hat{d}}\hat{g}^2.
 $$
-Since \(f\) must be in normalized form there are two cases:
-1) If \(\frac{1}{2}\le \hat{g}<\sqrt{\frac{1}{2}}\) then \(\frac{1}{4}\le\hat{g}^2<\frac{1}{2}\). Since \(\hat{g}^2\) is not in the range of a normalized fraction, it must be multiplied by 2 and the exponent reduced by 1 to put the fraction in normalized form. This produces an exponent and fraction of \(\hat{c}=2\hat{d}-1\) and \(\hat{f}=2\hat{g}^2\) respectively.
-2) If \(\sqrt{\frac{1}{2}}\le \hat{g} < 1\) then \(\frac{1}{2}\le\hat{g}^2<1\) and \(\hat{g}^2\) is normalized. The exponent and fractions are \(\hat{c}=2\hat{d}\) and \(\hat{f}=\hat{g}^2\) respectively.
+Since \(f\) must be in normalized form there are two cases for computing the exponent and fraction:
+1) If \(\frac{1}{2}\le \hat{g}<\sqrt{\frac{1}{2}}\) then \(\frac{1}{4}\le\hat{g}^2<\frac{1}{2}\). Since \(\hat{g}^2\) is not in the range of a normalized fraction, the exponent must be reduced by 1 it and the fraction multiplied by 2 and to put the fraction in normalized form. Then \(\hat{c}=2\hat{d}-1\) and \(\hat{f}=2\hat{g}^2\).
+2) If \(\sqrt{\frac{1}{2}}\le \hat{g} < 1\) then \(\frac{1}{2}\le\hat{g}^2<1\) and \(\hat{g}^2\) is normalized so \(\hat{c}=2\hat{d}\) and \(\hat{f}=\hat{g}^2\).
 
 The two cases can be combined since \(c_8\) is 1 in the first case and 0 in the second:
 $$
@@ -359,13 +359,13 @@ $$
 \begin{align*}
 \hat{d}&=\frac{\hat{c}+c_8}{2}\\
 d&=\frac{c+c_8}{2}+64\\
-\hat{g}&=\sqrt{\frac{\hat{f}}{2^{c_8}}}.
+\hat{g}&=\sqrt{2^{-c_8}\hat{f}}.
 \end{align*}
 $$
 
 ## Setup
 
-The following instruction descriptions include symbolic and actual binary results of the bit manipulations corresponding to the two fraction limits and one intermediate fraction for each of the two fraction ranges. Symbolic representations of the characteristic and fraction are in terms of the original characteristic bits `C` and fraction bits `F`. For example, if `C = 01101100` then `C[2-5]` is `1101` and `C[1-5]` is `01101`. Literals may be interspersed, as in `0 C[2,3] 1 = 0111`.
+The following explanations include symbolic and actual binary results from [simh IBM 704 emulation](https://github.com/open-simh/simh) of the bit manipulations corresponding to the two fraction limits and one intermediate fraction for each of the two fraction ranges. Symbolic representations of the characteristic and fraction are in terms of the original characteristic bits `C` and fraction bits `F`. For example, if `C = 01101100` then `C[2-5]` is `1101` and `C[1-5]` is `01101`. Literals may be interspersed, as in `0 C[2,3] 1 = 0111`.
 
 At the start of instruction `MISRT1011`, `AC` holds a positive normalized floating point value, such as the following:
 ```
@@ -379,23 +379,28 @@ At the start of instruction `MISRT1011`, `AC` holds a positive normalized floati
 .99 | 0 | 00 | 10000000 | 111 111 111 111 111 111 111 111 111
 ```
 
-The instructions to be executed is:
+The next instructions to be executed are:
 ```
        ANA SQRT+33           STORE 26 BIT X= Y*Y TO ALLOW ADD          MISRT1011
+       STO COMMON              SHIFT AND ROUND FOR AVERAGES            MISRT1012
 ```
-
-```
-// AND to accumulator
-// AND the accumulator with the value in the effective address.
-ANA {
-  AC &= C(Y);
-}
-```
-The referenced value in `SQRT+22` is defined with the pseudo-op `OCT` which specifies a raw octal value:
+where `SQRT+33` is defined as an octal value by the pseudo-op `OCT`:
 ```
        OCT 777777777776      MASK FOR 27TH BIT CLIP                    MISRT1042
 ```
-When the comment refers to `27TH BIT` it is referring to the bit in the fraction, not the word. The `ANA` will clear the low-order bit of the fraction. This lowers the square root by less than half the low fraction bit, so it will not make a difference in the floating point representation of the square root. It will make a difference in the computation, as described later.
+The operation definitions are:
+```
+// AND to accumulator
+ANA {
+  AC &= C(Y);
+}
+
+// STORE AC[S,1-35] in the effective address
+STO {
+  C(Y) = AC[S,1-35];
+}
+```
+The two line comment is one sentence. By truncating the 27 bit fraction to 26 bits, the computation of the average in Heron's method (described below) will be able to be performed with integer arithmetic.
 
 `AC` now contains:
 ```
@@ -408,21 +413,7 @@ When the comment refers to `27TH BIT` it is referring to the bit in the fraction
 .70 | 0 | 00 | 10000000 | 101 100 110 011 001 100 110 011 010
 .99 | 0 | 00 | 10000000 | 111 111 111 111 111 111 111 111 110
 ```
-
----
-
-```
-       STO COMMON              SHIFT AND ROUND FOR AVERAGES            MISRT1012
-```
-
-```
-// Store
-// Stores `AC[S,1-35]` in the effective address
-STO {
-  C(Y) = AC[S-35];
-}
-```
-`COMMON` now contains:
+and `COMMON` contains
 ```
 COMMON
  x  | S | CHAR     | FRACTION
