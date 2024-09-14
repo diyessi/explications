@@ -1,6 +1,6 @@
 ---
 title: "SHARE Square Root for the IBM 704"
-date: 2024-07-06T00:00:00-00:00
+date: 2024-09-13T00:00:00-00:00
 math: true
 draft: true
 ---
@@ -85,15 +85,15 @@ The complete SAP source code for the `MISRT1` square root is:
 
 # Simplified description of the IBM 704
 
-`MISRT1` will be described a few instructions at a time, with new operations defined as they are first encountered. A simplified description of the architecture provides the necessary background for understanding the operations. A detailed description, using 1954 terminology, can be found in [IBM 704 electronic data-processing machine](https://bitsavers.org/pdf/ibm/704/24-6661-2_704_Manual_1955.pdf). Some additional references are provided at the end of this section.
+`MISRT1` will be described a few instructions at a time, with new operations explained as they are first encountered using a simplified architecture. For a more detailed description, using 1954 terminology, see [IBM 704 electronic data-processing machine](https://bitsavers.org/pdf/ibm/704/24-6661-2_704_Manual_1955.pdf). Some additional references are provided at the end of this section.
 
 ## Arithmetic
 
 There are two special-purpose arithmetic registers:
- - `AC` is a 38 bit *accumulator* used as a source and destination for most operations,
- - `MQ` is a 36 bit *multiplier-quotient* register used for operations that require two registers, such as multiplication and division.
+ - `AC`, a 38 bit *accumulator* used as a source and destination for most operations,
+ - `MQ`, a 36 bit *multiplier-quotient* register mainly used for operations such as multiplication and division that require a pair of registers.
 
-Bit positions in the arithmetic registers are labeled corresponding to their roles in the sign-magnitude representation of signed integers. In this representation, the left-most bit position is called `S` and contains the sign of the integer. The remaining bit positions hold the magnitude. The low 35 bit positions, from high to low, are `1` through `35`. The two additional bit positions in `AC` are `Q` and `P`:
+The highest order bit is called `S` and the low 35 bits are `1` through `35` with `35` being the lowest order. The two additional bits in `AC` between `S` and `1` are called `Q` and `P`:
 ```
 AC: S Q P 1 2 3 4 ... 35
 MQ: S     1 2 3 4 ... 35
@@ -101,28 +101,26 @@ MQ: S     1 2 3 4 ... 35
 
 When describing bit manipulation, the notation `R[S,1-11]` denotes the value in the high 12 bits of a 36 bit register `R`. When describing mathematical properties, \(R_{S,1-12}\) designates the same bits as an unsigned integer in the register \(R\).
 
-Values were normally written in octal. The bit in the `S` position was either written as `+` or `-` for `0` and `1` respectively, or included in the high order octal digit, as in the four constants at the end of `MISRT1`. Here, binary will often be used because it makes it easier to see the effects of shifts.
+Values were normally written in octal. The bit in the `S` position was either written as `+` or `-` for `0` and `1` respectively, or included in the high order octal digit, as in the four constants at the end of the `MISRT1` listing. Here, binary will often be used to better illustrate the effects of shifts.
 
 ## Memory
 
-The IBM 704 memory (also called *registers*) comes in three configurations: 4096, 8192, or 32,768 36 bit words of memory. Bit positions in a word are the same as in `MQ`: `S` and `1` through `35`. For an address `A`, `C(A)` denotes the memory value at `A` masked down to 12, 13 or 15 bits according to the configured memory size. Because of this masking, all addresses correspond to valid memory on the IBM 704.
+The IBM 704 memory comes in three configurations: 4096, 8192, or 32,768 36 bit words of memory. Bit positions in a word are the same as in `MQ`: `S` and `1` through `35`. For an address `A`, `C(A)` denotes the memory value at `A` masked down to 12, 13 or 15 bits according to the configured memory size. Because of this masking, all addresses correspond to valid memory on the IBM 704. In the documentation memory cells are also called registers.
 
 Three *index* registers hold 12, 13, or 15 bits, depending on the memory configuration. These registers are read/written in a somewhat unusual manner. A three bit *tag* serves as a bit mask to select a subset of the three registers. When writing, all the selected registers are written. When reading, the contents of the selected registers are ORed together. If the tag is 0, no registers are written and 0 is read. `X(T)` denotes the indexing for a tag `T`.
 
 ## Instructions
 
-Each instruction is a full word. The `IC`, or *instruction counter*, contains the address of the next instruction to be executed. A clock cycle is 12 microseconds. Most instructions require two cycles, but some require more. The manual states that about 40,000 instructions/second are executed in normal use.
+Each instruction is a full word. The `IC`, or *instruction counter*, contains the address of the next instruction to be executed. A clock cycle is 12 microseconds. Most instructions require two cycles, but some require more. The manual states that about 40,000 instructions/second are executed in normal use, which is about two cycles per instruction.
 
-Bit positions `18-20` of a word are called the `tag` and positions `21-35` are called the `address`, even for words that do not contain an instruction. The tag and address are used to compute an effective address `Y` for *indexable* operations.
+Bit positions `18-20` of a word are called the `tag` and positions `21-35` are called the `address`. The tag and address are used to compute an effective address `Y` for *indexable* operations.
 
-Even though the processor was directly implemented in logic, it will be easier to describe its operation in a C-like pseudo-code. The basic instruction loop is:
-
+The basic instruction cycle in a C-like pseudo-code is:
 ```
-while(!halted) {
+EXECUTE:
   IR = C(IC++);
   Y = IR[address] - X(IR[tag]);
-  execute I[opcode];
-}
+  GOTO I[opcode];
 ```
 
 Here `IR` is the instruction register, holding the instruction read from memory at the location of `IC`, and `Y` is the effective address, used by most operations. It is the address field of the instruction with the index of the tag field *subtracted*.
@@ -149,7 +147,7 @@ When words representing integers are written using octal notation, they may be w
 
 ## Floating point representation
 
-The floating point representation uses 36 bits containing three unsigned integer fields: a one bit *sign* \(s\) in the sign bit `S`, an eight bit *characteristic* \(c\) in bits 1 through 8, and a 27 bit *fraction* \(f\) in bits 9 through 35. The sign is used in the same way as with the integer representation. The characteristic is the binary exponent biased by 128 and the fraction is scaled by \(2^{-27}\).
+The floating point representation divides a word into three unsigned integer fields: a one bit *sign* \(s\) in the sign bit `S`, an eight bit *characteristic* \(c\) in bits 1 through 8, and a 27 bit *fraction* \(f\) in bits 9 through 35. The sign is used in the same way as with the integer representation. The characteristic is the binary exponent biased by 128 and the fraction is scaled by \(2^{-27}\).
 
 The floating point value \(v\) associated with a sign of \(s\), characteristic \(c\), and fraction \(f\) is
 $$
@@ -166,9 +164,9 @@ $$
 \hat{f}&=2^{-27}f.
 \end{aligned}
 $$
-The values without the hats are the value of the bit fields, the values with the hats are the values the bit fields represent.
+The values without the hats are the raw values of the bit fields while the values with the hats are what the the bit fields represent.
 
-A floating point value can have more than one representation because increasing the characteristic and shifting the fraction to the right does not change the represented value. For example, three representations of 1.0 are:
+A floating point value can have more than one representation because increasing the characteristic and shifting the fraction to the right does not change the represented value. Three representations of 1.0 are:
 ```
 VALUE   S    C        F
 1.0   | 0 | 201 | 400000000
@@ -215,24 +213,26 @@ The floating point representation was designed so that the floating point and in
 
 # SAP source format
 
-Each line contains exactly 80 characters and corresponds to one 80 column IBM punched card. A typical card (produced by [mass:werk](https://www.masswerk.at/card-readpunch/) )would look something like:
+Each line contains exactly 80 characters, corresponding to one 80 column IBM punched card. A typical card (produced by [mass:werk](https://www.masswerk.at/card-readpunch/)) would look something like:
 
 ![MISRT1009 Card](images/MISRT1009.png)
 
-Cards are divided into fields based on column positions:
+The character encoding used on cards was easily converted to six bit character encodings used on tape and in memory. There are no encodings for lowercase letters and a number of common symbols. This is why old programs are uppercase. Surprisingly, there are encodings for a few symbols that are not in Unicode.
+
+SAP source cards are divided into fields based on column positions:
 - [1-6] An optional label. When read, all blanks are removed, so `OLD X` and `OLDX` are the same.
 - [7] Blank.
 - [8-10] Three character opcode or pseudo-opcode.
 - [11] Blank.
-- [12-80] The *variable field*, up to the first blank. The variable field contains comma-separated parameters. Anything after the blank is a comment.
+- [12-80] The *variable field*, up to the first blank. The variable field contains comma-separated parameters. Any characters after the first blank are for comments.
 
-It was common to use columns on the right side of the card to add sequencing information. Since this was in the comment area it was ignored by the assembler. Here they will serve as a way to reference particular lines. When a deck of cards was accidentally dropped, a card sorter, a common piece of data processing equipment at the time, could be used to put them back in order. For the 46 cards in `MISRT1`, sorter setup time would have made sorting them by hand faster. 
+It was common to use the columns on the right side of the card for sequencing information. Since this was in the comment area it was ignored by the assembler. When a deck of cards was accidentally dropped the line numbers were used to reorder them. Here they will be used to reference particular lines in the program.
 
 ## Using MISRT1 in a program
 
-Understanding programs from the 1950s can be challenging. For example, even though \(\sqrt{}\) is a function, `MISRT1` is not a function in the current sense. A function returns to the instruction after its caller it completes, while invoking an IBM 704 subroutine is more like [continuation passing](https://en.wikipedia.org/wiki/Continuation). A subroutine is branched to and provided a pointer to a call vector containing arguments, space for return values, and branch targets. When the subroutine completes its work it will branch to one of the branch targets after setting the appropriate return values for that target. Although this may seem like a strange way to do things, it is similar to several IBM 704 instructions that have multiple return points. Even on modern architectures conditional branches have two return points and compilers use similar representations during their analysis.
+Understanding programs from the 1950s can be challenging. For example, even though \(\sqrt{}\) is a function, `MISRT1` is not a function in the current sense. A function returns to the instruction after its caller it completes, while invoking an IBM 704 subroutine is more like [continuation passing](https://en.wikipedia.org/wiki/Continuation). A subroutine is branched to and provided a pointer to a call vector containing arguments, space for return values, and branch targets. When the subroutine completes its work it will branch to one of the branch targets after setting appropriate return values for that target. Although this may seem like a strange way to do things, it is similar to several IBM 704 instructions that have multiple return points. Even on modern architectures conditional branches have two return points and compilers use similar representations during their analysis.
 
-SHARE and IBM established some conventions so that subroutines could be used reliably. One was that `X(4)` was always used for the call vector. Two more conventions were that the first argument and first result were passed in `AC` rather than the call vector.
+SHARE and IBM established conventions so that subroutines could be used reliably. One was that `X(4)` was always used for the call vector. Two more conventions were that the first argument and first result were passed in `AC` rather than the call vector.
 
 Although there was no control stack and function frame, most subroutines still required temporary storage. With at most 32,768 words of memory, programs would often stash small temporary values in unused bits of instructions. When whole words were required, the SHARE convention was that a block of storage starting at a location named `COMMON` would be used. Subroutines would indicate how much space in `COMMON` they required, so the programmer could reserve space for the maximum size required by all of its subroutines.
 
@@ -268,9 +268,9 @@ TWO    DEC 2.0
 ```
 // Clear and add
 // Clear the accumulator and add the value at the effective address
-CLA {
+CLA:
   AC = C(Y);
-}
+  GOTO EXECUTE;
 ```
 The first operand, `TWO` is the address. The second operand is the tag, which is 0 when omitted. `TWO` is defined at the end as a floating point 2.0 constant, using the `DEC` *decimal* pseudo-op. The result is that `AC` contains the floating point representation of 2.0.
 
@@ -288,9 +288,9 @@ TSX {
 Following the `TSX` instruction are the two return points, the first for *alarm return* when `AC` is negative, the second for normal return. The `TRA` is just an unconditional branch:
 ```
 // Transfer
-TRA {
+TRA:
   IC = C(Y);
-}
+  GOTO EXECUTE;
 ```
 
 An indexable branch to `1,4` will branch to the warning address, while a branch to `2,4` will branch to the normal continuation address.
@@ -309,11 +309,11 @@ The first instruction is the entry point, with the label `SQRT`:
 ```
 // Test zero
 // Branch to the effective address if the magnitude of AC is 0
-TZE {
+TZE:
   if (0 == AC[Q-35]) then {
     IC = C(Y);
   }
-}
+  GOTO EXECUTE;
 ```
 The effective address is word 2 of the call vector, the normal return. Since `AC` has not been changed, the result is 0.
 
@@ -326,15 +326,47 @@ The effective address is word 2 of the call vector, the normal return. Since `AC
 ```
 // Test minus
 // If the sign of AC is 1 branch to the effective address.
-TMI {
+TMI:
   if (1 == AC[S]) then {
     IC = C(Y);
   }
-}
+  GOTO EXECUTE;
 ```
 The effective address is word 1 in the call vector, the alarm address. Since `AC` has not been changed, exception handling can take action based on the value of the argument.
 
-## Taking advantage of the representation
+## Heron's square root formula
+
+The remainder of the square root routine is based on Heron's square root formula. Given an approximation \(y_n\approx \sqrt{x}\), Heron's formula gives a better approximation
+$$
+y_{n+1} = \frac{1}{2}\left(y_n+\frac{x}{y_n}\right).
+$$
+
+To see how quickly this converges, let the error \(\epsilon_n=y_n-\sqrt{x}\). If \(\epsilon_n=0\) then 
+\(y_n=\sqrt{x}\) so \(\frac{x}{y_n}=y_n\), \(y_{n+1}=y_n\) and \(\epsilon_{n+1}=0.\)
+
+Otherwise, one application of Heron's formula gives:
+$$
+\begin{align*}
+\epsilon_{n+1}&=y_{n+1}-\sqrt{x}\\
+&=\frac{1}{2}\left(y_n+\frac{x}{y_n}\right)-\sqrt{x}\\
+&=\frac{y_n^2+(y_n-e_n)^2}{2y_n}-(y_n-\epsilon_n)\\
+&=\frac{2y_n^2-2y_n\epsilon_n+\epsilon_n^2-2y_n^2+2y_n\epsilon_n}{2y_n}\\
+&=\frac{\epsilon_n^2}{2y_n}
+\end{align*}
+$$
+Whether \(\epsilon_0\) is negative or positive, \(\epsilon_n\) is positive for \(n>0\). The linear approximation is exact for odd exponents when \(\hat{f}=1\) and otherwise less than \(\sqrt{x}\).
+
+The error after \(n\) iterations can be estimated as:
+$$
+\begin{align*}
+\epsilon_n&=\frac{1}{2}\frac{\epsilon_n^2}{\epsilon_n+\sqrt{x}}\\
+&\approx \frac{\epsilon_n^2}{2\sqrt{x}}&\text{for }\epsilon_n\text{ small compared to }\sqrt{x}\\
+\end{align*}
+$$
+
+## First approximation
+
+Before applying Heron's formula an initial approximation must be found.
 
 At this point it is known that \(x>0\) and thus \(y > 0\).
 
@@ -391,9 +423,9 @@ where `SQRT+33` is defined as an octal value by the pseudo-op `OCT`:
 The operation definitions are:
 ```
 // AND to accumulator
-ANA {
+ANA:
   AC &= C(Y);
-}
+  GOTO EXECUTE;
 
 // STORE AC[S,1-35] in the effective address
 STO {
@@ -458,9 +490,9 @@ Both the even and odd exponent cases will be handled by the same instructions.
 ```
 // Accumulator right shift
 // Shift AC[Q-35] right by the address field
-ARS {
+ARS:
   AC[Q-35] >>= (IC[address] % 256);
-}
+  GOTO EXECUTE;
 ```
 AC (except for the sign) is shifted right by 1. Bit 9, the first bit of the fraction, now contains the low bit of the characteristic.
 ```
@@ -482,9 +514,9 @@ AC (except for the sign) is shifted right by 1. Bit 9, the first bit of the frac
 ```
 // Add
 // Add the value in the effective address to AC
-ADD {
+ADD:
   AC += C(Y);
-}
+  GOTO EXECUTE;
 ```
 Since `COMMON` is normalized, the first bit of the fraction is 1. If `AC[9] = 1` (odd \(c\)) then adding `COMMON` to `AC` will add 1 to the first bit of the fraction, turning it to 0, and carry into the characteristic, adding 1 to it. This may generate a carry into `AC[P]`. It is simplest in this section to treat the characteristic as `AC[Q-8]`.  The characteristic is even and \(c+c_8\) and the fraction is \(\hat{f}-\frac{c_8}{2}\).
 ```
@@ -520,16 +552,15 @@ COMMON+1
 
 ## Fraction
 
-The computation of \(d\) is almost complete, but what is going on with the fraction? This is the beginning of the first linear approximation \(\hat{g}_0\) of \(\hat{g}\). 
+The computation of \(d\) is almost complete, but the fraction \(\hat{g}=\sqrt{2^{-c_8}\hat{f}}\) must still be computed, starting with the first approaximation \(\hat{g}_0\). Let \(\hat{g}_0=\hat{g}\) when \(\hat{f}\) is \(\frac{1}{2}\) and 1. 
 
-Recall that there are two cases for the fraction, one for an odd exponent and one for an even exponent. In each case, \(\frac{1}{2}\le \hat{f}<1\), but with odd exponents \(\sqrt{\frac{f}{2}}\) must be computed and with the even exponent \(\sqrt{\hat{f}}\). These can be combined by computing \(\sqrt{s\hat{f}}\) where \(s\) is \(\frac{1}{2}\) for odd exponents and 1 for even exponents. The linear approximation must match \(\sqrt{s\hat{f}}\) when \(\hat{f}\) is \(\frac{1}{2}\) and 1. Then
 $$
 \begin{align*}
-\hat{g}_0&=\sqrt{\frac{s\hat{f}}{2}}+\left(\hat{f}-\frac{1}{2}\right)\left(\sqrt{s\hat{f}}-\sqrt{\frac{sf}{2}}\right)\\
-&=\sqrt{s}\left(\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1\right)\\
+\hat{g}_0&=\sqrt{\frac{2^{-c_8}\hat{f}}{2}}+\left(\hat{f}-\frac{1}{2}\right)\left(\sqrt{2^{-c_8}\hat{f}}-\sqrt{\frac{2^{-c_8}f}{2}}\right)\\
+&=\sqrt{2^{-c_8}}\left(\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1\right)\\
 &=\begin{cases}
-\hat{f}\left(\sqrt{2}-1\right)+1-\frac{\sqrt{2}}{2}&\text{for odd exponents }(s=\frac{1}{2})\\
-\hat{f}\left(2-\sqrt{2}\right)+\sqrt{2}-1&\text{for even exponents }(s=1).
+\left(\sqrt{2}-1\right)\hat{f}+1-\frac{\sqrt{2}}{2}&\text{for odd exponents }\\
+\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1&\text{for even exponents }.
 \end{cases}
 \end{align*}
 $$
@@ -550,9 +581,9 @@ $$
 ```
 // Accumulator left shift
 // Shift AC (except the sign) by the address
-ALS {
+ALS:
   AC[Q-35] <<= IC[address];
-}
+  GOTO EXECUTE;
 ```
 
 `AC` is shifted left by 10 bits. If a 1 bit is shifted into or through `P` the overflow indicator is set.
@@ -579,16 +610,16 @@ Using the 704 bit numbering for a word, the characteristic is in bits 1-8, so sh
 ```
 // P Bit Test
 // Skip the next instruction if P is 1
-PBT {
+PBT:
   if (1 == AC[P]) {
     IC++;
   }
-}
+  GOTO EXECUTE;
 
 // Complement magnitude
-COM {
+COM:
   AC[Q-35] = ~AC[Q-35];
-}
+  GOTO EXECUTE;
 ```
 If \(c_8=0\) the next instruction is skipped. The `COM` operation complements `AC[Q-35]`.
 ```
@@ -650,11 +681,16 @@ For the odd case, subtract this from \((2^{22}-1)2^{-27}=\frac{1}{32}+2^{-27}\) 
 ```
        ADD COMMON+1                                                    MISRT1023
 ```
-Recall that the fraction in `COMMON+1` is \((\hat{f}-c_8/2)/2\). In the even case,
+Recall that the fraction in `COMMON+1` is
+$$
+\frac{1}{2}\left(\hat{f}-\frac{c_8}{2}\right)=\frac{\hat{f}}{2}-\frac{c_8}{4}.
+$$
+
+In the even case,
 $$
 \begin{align*}
-\frac{\hat{f}}{2}-\frac{c_8}{4}+\frac{f}{16}-\frac{1}{32}&=\frac{9}{16}f-\frac{1}{32}&c_8=0,\\
-\frac{\hat{f}}{2}-\frac{c_8}{4}-\frac{\hat{f}}{16}+\frac{1}{16}-2^{-27}&=\frac{7}{16}f-\frac{3}{16}-2^{-27}&c_8=1.
+\left(\frac{\hat{f}}{2}-\frac{c_8}{4}\right)+\left(\frac{\hat{f}}{16}-\frac{1}{32}\right)&=\frac{9}{16}\hat{f}-\frac{1}{32}&c_8=0,\\
+\left(\frac{\hat{f}}{2}-\frac{c_8}{4}\right)+\left(-\frac{\hat{f}}{16}+\frac{1}{16}-2^{-27}\right)&=\frac{7}{16}\hat{f}-\frac{3}{16}-2^{-27}&c_8=1.
 \end{align*}
 $$
 ```
@@ -684,11 +720,11 @@ S | CHAR     | FRACTION
 The characteristic is 64, the amount still needed to add to the characteristic to get \(d\). The fraction is \(15/32+2^{-27}\). Adding to the previous fraction gives:
 $$
 \begin{align*}
-\frac{9}{16}f-\frac{1}{32}+\frac{15}{32}+2^{-27}&=\frac{9}{16}f+\frac{7}{16}+2^{-27}&c_8=0,\\
-\frac{7}{16}f-\frac{3}{16}-2^{-27}+\frac{15}{32}+2^{-27}&=\frac{7}{16}f+\frac{9}{32}&c_8=1.
+\frac{9}{16}\hat{f}-\frac{1}{32}+\frac{15}{32}+2^{-27}&=\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}&c_8=0,\\
+\frac{7}{16}\hat{f}-\frac{3}{16}-2^{-27}+\frac{15}{32}+2^{-27}&=\frac{7}{16}\hat{f}+\frac{9}{32}&c_8=1.
 \end{align*}
 $$
-Aside from the \(2^-{27}\) in the even case, these correspond to the linear approximation determined earlier.  Why the \(2^{-27}\)? In the even case a multiple of the fraction is to be subtracted by adding, which requires a twos complement. The 704 only has ones complement, which will be off by 1, or \(2^{-27}\). Including the \(2^{-27}\) in the lumped constant corrects the odd case, while leaving it out leaves the even case correct. When \(x=1\) the characteristic is odd so including the \(2^{-27}\) in the odd case makes the linear approximation exact.
+Aside from the \(2^{-27}\) in the even case, these correspond to the linear approximation determined earlier.  Why the \(2^{-27}\)? In the even case a multiple of the fraction is to be subtracted by adding, which requires a twos complement. The 704 only has ones complement, which will be off by 1, or \(2^{-27}\). Including the \(2^{-27}\) in the lumped constant corrects the odd case, while leaving it out leaves the even case correct. When \(x=1\) the characteristic is odd so including the \(2^{-27}\) in the odd case makes the linear approximation exact.
 ```
  x  | S | QP | CHAR     | FRACTION
 .25 | 0 | 00 | 10000000 | 100 000 000 000 000 000 000 000 000
@@ -718,49 +754,20 @@ COMMON+1
 
 ## Error of the linear approximation
 
-The linear approximation will be less than \(\sqrt{s\hat{f}}\) between \(\frac{1}{2}\) and 1, so the error \(\epsilon_0\) will be:
+The linear approximation will be less than \(\sqrt{2^{-c_8}\hat{f}}\) between \(\frac{1}{2}\) and 1, so the error \(\epsilon_0\) will be:
 $$
 \begin{align*}
-\epsilon_0&=\sqrt{s\hat{f}}-\sqrt{s}\left(\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1\right)\\
-&=\sqrt{s}\left(\sqrt{\hat{f}}-\left(2-\sqrt{2}\right)\hat{f}-\sqrt{2}+1\right).
+\epsilon_0&=\sqrt{2^{-c_8}\hat{f}}-\sqrt{2^{-c_8}}\left(\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1\right)\\
+&=\sqrt{2^{-c_8}}\left(\sqrt{\hat{f}}-\left(2-\sqrt{2}\right)\hat{f}-\sqrt{2}+1\right).
 \end{align*}
 $$
 The error is maximized when
 $$
 \hat{f}=\frac{3+2\sqrt{2}}{8}\approx .729,
 $$
-giving a maximum error of about .0126 when \(s=1\).
+giving a maximum error of about \(\epsilon_0=.0126\) when the exponent is odd.
 
-## Heron's Square Root Formula
-
-The remainder of the square root routine is based on Heron's square root formula. Given an approximation \(y_n\approx \sqrt{x}\), Heron's formula gives a better approximation
-$$
-y_{n+1} = \frac{1}{2}\left(y_n+\frac{x}{y_n}\right).
-$$
-
-To see how quickly this converges, let the error \(\epsilon_n=y_n-\sqrt{x}\). If \(\epsilon_n=0\) then 
-\(y_n=\sqrt{x}\) so \(\frac{x}{y_n}=y_n\), \(y_{n+1}=y_n\) and \(\epsilon_{n+1}=0.\)
-
-Otherwise, one application of Heron's formula gives:
-$$
-\begin{align*}
-\epsilon_{n+1}&=y_{n+1}-\sqrt{x}\\
-&=\frac{1}{2}\left(y_n+\frac{x}{y_n}\right)-\sqrt{x}\\
-&=\frac{y_n^2+(y_n-e_n)^2}{2y_n}-(y_n-\epsilon_n)\\
-&=\frac{2y_n^2-2y_n\epsilon_n+\epsilon_n^2-2y_n^2+2y_n\epsilon_n}{2y_n}\\
-&=\frac{\epsilon_n^2}{2y_n}
-\end{align*}
-$$
-Whether \(\epsilon_0\) is negative or positive, \(\epsilon_n\) is positive for \(n>0\). The linear approximation is exact for odd exponents when \(\hat{f}=1\) and otherwise less than \(\sqrt{x}\).
-
-The error after \(n\) iterations can be estimated as:
-$$
-\begin{align*}
-\epsilon_n&=\frac{1}{2}\frac{\epsilon_n^2}{\epsilon_n+\sqrt{x}}\\
-&\approx \frac{\epsilon_n^2}{2\sqrt{x}}&\text{for }\epsilon_n\text{ small compared to }\sqrt{x}\\
-\end{align*}
-$$
-Then,
+Two applications of Heron's methods with \(\epsilon_0=.0126\) at \(x=.729\) give:
 $$
 \begin{align*}
 \epsilon_n&\approx \epsilon_0 \left(\frac{\epsilon_0}{2\sqrt{x}}\right)^{2^n}\\
@@ -770,7 +777,7 @@ $$
 $$
 Thus, two applications of Heron's formula will be have more than the 27 bit precision of the floating point format.
 
-## The first application
+## The first Heron
 
 At this point, `COMMON` contains \(x\) with exponent \(c\) and fraction \(f\) and `COMMON+1` contains \(y_0\), the linear approximation, with exponent \(d\) and fraction \(g\).
 
@@ -788,10 +795,10 @@ At this point, `COMMON` contains \(x\) with exponent \(c\) and fraction \(f\) an
 ```
 ```
 // Float divide or proceed
-FDP {
+FDP:
   MQ = AC/C(Y); // float divide
   AC -= MQ*C(Y);
-}
+  GOTO EXECUTE;
 ```
 ```
          | S | CHAR     | FRACTION
@@ -882,9 +889,9 @@ There is one other detail to be dealt with. The above is for exact arithmetic. F
 ```
 ```
 // Store MQ
-STQ {
+STQ:
   C(Y) = MQ
-}
+  GOTO EXECUTE;
 ```
 
 \(\frac{x}{y_0}\) and \(y_0\) must be averaged. Unfortunately, 704 data paths were limited and there isn't a way to add `MQ` and `AC` without going through memory.
@@ -896,10 +903,10 @@ But `ADD` is an integer add, not a floating point add. How can this work? The ex
 ```
 ```
 // Long right shift
-LRS {
+LRS:
   AC[Q-35]MQ[1-35] >>= (Y % 256);
   MQ[S] = AC[S];
-}
+  GOTO EXECUTE;
 ```
 
 ---
@@ -910,9 +917,9 @@ LRS {
 ```
 // Round
 // Add MQ[1] to AC[Q-35]
-RND {
+RND:
   AC[Q-35] += MQ[1]'
-}
+  GOTO EXECUTE;
 ```
 Since this is immediately followed by a second application of Heron's formula, which will more than correct for an error in the low order bit of the fraction, this would seem to be an unnecessary operation, and it would be if floating point arithmetic were being used. But on closer inspection, notice how for the ".99" case, the combination of the `ANA` in `MISRT1011` and the `RND` in `MISRT1032` work together to ensure that the quotient will not increase the exponent and the final fraction at the end of this application of Heron's formula will be greater than `COMMON` for the next application of Heron's formula.
 ```
@@ -967,7 +974,7 @@ RND      | 0 | 00 | 10000000 | 111 111 111 111 111 111 111 111 111
 ```
 `COMMON+1` is updated with the new approximation.
 
-## Second application
+## Second Heron
 
 The second application of Heron's formula is identical, except that there is no need to store the result in `COMMON+1`. Since an application of Heron's formula always results in a non-negative error, the first application ensures that the divisions will no increase the exponent, so the integer arithmetic will be safe.
 ```
@@ -1043,11 +1050,11 @@ RND      | 0 | 00 | 10000000 | 111 111 111 111 111 111 111 111 111
 ```
 ```
 // Transfer on overflow
-TOV {
+TOV:
   if (1 == overflow) {
     IC = Y;
     overflow = 0;
   }
-}
+  GOTO EXECUTE;
 ```
 Computing a square root should not result in an overflow, but the overflow indicator is always set in the `ALS 10` instruction at `MISRT1018`. This clears the overflow and continues execution at the normal (second) continuation.
