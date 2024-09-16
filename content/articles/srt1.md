@@ -2,38 +2,36 @@
 title: "SHARE Square Root for the IBM 704"
 date: 2024-09-13T00:00:00-00:00
 math: true
-draft: true
+draft: false
 ---
 # Abstract
 
-The IBM 704 SHARE library floating point square root routine `MISRT1` executes only two floating point instructions. The IBM 704 was introduced in 1954. It was the first commercial computer with core memory and hardware support for floating point. The first version of FORTRAN was developed for the 704 and some 704 features were influenced by the needs of FORTRAN. Here the implementation of `MISRT1` is described, illustrating of the techniques used in early programming.
+The floating point square root routine `MISRT1` in the IBM 704 SHARE library computes an accurate result using only two floating point instructions. The IBM 704 was introduced in 1954. It was the first commercial computer with core memory and hardware support for floating point. The first version of FORTRAN was developed for the 704 and some 704 features were influenced by the needs of FORTRAN. This description of the implementation of `MISRT1` illustrates a few of the early programming techniques.
 
 # The IBM SHARE tape
 
-In 1955 a group of IBM 704 users formed [SHARE](https://www.share.org/) to share programs and other information related to IBM computers. One of the founders was [Roy Nutt](https://history.computer.org/pioneers/nutt.html), who wrote the [SHARE Assembler Program (SAP)](https://sky-visions.com/ibm/704/uasap.pdf#page=2) that was used to assemble many of these programs and routines, including `MISRT1`. SHARE distributed programs on magnetic tape. [Paul Pierce's Computer Collection](https://piercefuller.com/collect/index.html) includes recovered contents of a number of early computer tapes, including the [IBM SHARE Library](https://www.piercefuller.com/library/share.html). The [Yale SHARE Tape 2 29-508](https://www.piercefuller.com/library/kyu2.html) contains the `MISRT1` square root routine described below.
+In 1955 a group of IBM 704 users formed [SHARE](https://www.share.org/) to share programs and other information related to IBM computers. One of the founders was [Roy Nutt](https://history.computer.org/pioneers/nutt.html), who wrote the [SHARE Assembler Program (SAP)](https://sky-visions.com/ibm/704/uasap.pdf#page=2) that was used to assemble many of these programs and routines, including `MISRT1`. SHARE distributed programs on magnetic tape. [Paul Pierce's Computer Collection](https://piercefuller.com/collect/index.html) includes recovered contents of several early tapes, including the [IBM SHARE Library](https://www.piercefuller.com/library/share.html). The [Yale SHARE Tape 2 29-508](https://www.piercefuller.com/library/kyu2.html) contains the `MISRT1` square root routine described here.
 
-The files on Paul Pierce's site are almost the raw tape contents. Some knowledge of magnetic tape conventions, reverse engineering and pre-processing not described in this description is required to convert `MISRT1` into the form shown here.
+The files on Paul Pierce's site are almost the raw tape contents. Some knowledge of magnetic tape conventions, along with reverse engineering and pre-processing that are not described are required to convert `MISRT1` into the form shown here.
 
-## MISRT1 header
+## The MISRT1 header
 
-Each routine on the SHARE tape has a header that contains meta-information about the routine. There is quite a bit of variability among the headers.
-
-For `MISRT1` the header record is:
+Each routine on the SHARE tape has a header that contains meta-information about the routine. The contents of the headers varies, so they were probably intended for human use. For `MISRT1` the header record is:
 ```
 B4 MI SRT1 02-06-58 0399         SY 0045
 ```
-Most of the information can be understood:
+The information decodes as:
  - `B4` is the classification, a root or power, as described in [SHARE Reference Manual, 03.10 -29](https://www.piercefuller.com/scan/share59.pdf#page=66).
  - `MI` indicates the contributor, MIT, as listed in [SHARE Reference Manual, 02.02 -14](https://www.piercefuller.com/scan/share59.pdf#page=27).
  - `SRT1` names this particular implementation of square root.
  - `02-06-58` is the date.
  - `0399` might be related to the record size.
- - `SY` indicates *symbolic*, meaning source.
+ - `SY` indicates *symbolic*, the term used at the time for source as opposed to binary.
  - `0045` The last card, numbered from `0000`.
 
-## MISRT1 source code
+## The MISRT1 source code
 
-The complete SAP source code for the `MISRT1` square root is:
+The complete SAP source code for `MISRT1` is:
 ```
        REM SQUARE ROOT, FLOATING POINT                                 MISRT1000
        REM   TIME (AV.)= 102 CYCLES= 1.224 M.S.                        MISRT1001
@@ -83,15 +81,16 @@ The complete SAP source code for the `MISRT1` square root is:
        OCT 100360000001      LUMPED CONSTANT                           MISRT1045
 ```
 
-# Simplified description of the IBM 704
+# A simplified description of the IBM 704
 
-`MISRT1` will be described a few instructions at a time, with new operations explained as they are first encountered using a simplified architecture. For a more detailed description, using 1954 terminology, see [IBM 704 electronic data-processing machine](https://bitsavers.org/pdf/ibm/704/24-6661-2_704_Manual_1955.pdf). Some additional references are provided at the end of this section.
+`MISRT1` will be described a few instructions at a time, with new operations explained as they are first encountered. The manual [IBM 704 electronic data-processing machine](https://bitsavers.org/pdf/ibm/704/24-6661-2_704_Manual_1955.pdf) provides a detailed description of the 704 aimed at the typical user of 1954. A simplified description sufficient for understanding the operations in `MISRT1` is presented here. Some additional references are provided at the end of this section.
 
-## Arithmetic
+## Arithmetic logic unit
 
-There are two special-purpose arithmetic registers:
+A diagram of a modern processor shows a central arithmetic logic unit (ALU) with two inputs and one output. The inputs and outputs include various registers and may also include a few other sources and destinations such as caches or buses, depending on the architecture. The 704 is more like a calculator where each action combines the displayed value with some other value to produce a new displayed value. In the 704, a pair of special-purpose registers plays the role of the displayed value:
  - `AC`, a 38 bit *accumulator* used as a source and destination for most operations,
  - `MQ`, a 36 bit *multiplier-quotient* register mainly used for operations such as multiplication and division that require a pair of registers.
+These contents of these registers were actually displayed in binary on the console via lights.
 
 The highest order bit is called `S` and the low 35 bits are `1` through `35` with `35` being the lowest order. The two additional bits in `AC` between `S` and `1` are called `Q` and `P`:
 ```
@@ -99,48 +98,29 @@ AC: S Q P 1 2 3 4 ... 35
 MQ: S     1 2 3 4 ... 35
 ```
 
-When describing bit manipulation, the notation `R[S,1-11]` denotes the value in the high 12 bits of a 36 bit register `R`. When describing mathematical properties, \(R_{S,1-12}\) designates the same bits as an unsigned integer in the register \(R\).
+In mathematical notation, \(R_{S,1-11}\) denotes the high 12 bits of a 36 bit word. This notation is also used in the 704 manual. Since markdown does not support subscripts, the notation `R[S,1-11]` is used in textual contexts.
 
-Values were normally written in octal. The bit in the `S` position was either written as `+` or `-` for `0` and `1` respectively, or included in the high order octal digit, as in the four constants at the end of the `MISRT1` listing. Here, binary will often be used to better illustrate the effects of shifts.
+Values were normally written in octal. The bit in the `S` position was either written as `+` or `-` for `0` and `1` respectively, or included in the high order octal digit, as in the four constants at the end of the `MISRT1` listing. In the descriptions of `MISRT1`, binary will often be used to better illustrate the effects of shifts.
 
 ## Memory
 
-The IBM 704 memory comes in three configurations: 4096, 8192, or 32,768 36 bit words of memory. Bit positions in a word are the same as in `MQ`: `S` and `1` through `35`. For an address `A`, `C(A)` denotes the memory value at `A` masked down to 12, 13 or 15 bits according to the configured memory size. Because of this masking, all addresses correspond to valid memory on the IBM 704. In the documentation memory cells are also called registers.
+The IBM 704 memory comes in three configurations: 4096, 8192, or 32,768 36 bit words of memory. Bit positions in a word are the same as in `MQ`: `S` and `1` through `35`. For an address `A`, `C(A)` denotes the memory value at `A` masked down to 12, 13 or 15 bits according to the configured memory size. Because of this masking, all addresses correspond to valid memory on the IBM 704. In contemporary material, memory cells are also called registers.
 
 Three *index* registers hold 12, 13, or 15 bits, depending on the memory configuration. These registers are read/written in a somewhat unusual manner. A three bit *tag* serves as a bit mask to select a subset of the three registers. When writing, all the selected registers are written. When reading, the contents of the selected registers are ORed together. If the tag is 0, no registers are written and 0 is read. `X(T)` denotes the indexing for a tag `T`.
-
-## Instructions
-
-Each instruction is a full word. The `IC`, or *instruction counter*, contains the address of the next instruction to be executed. A clock cycle is 12 microseconds. Most instructions require two cycles, but some require more. The manual states that about 40,000 instructions/second are executed in normal use, which is about two cycles per instruction.
-
-Bit positions `18-20` of a word are called the `tag` and positions `21-35` are called the `address`. The tag and address are used to compute an effective address `Y` for *indexable* operations.
-
-The basic instruction cycle in a C-like pseudo-code is:
-```
-EXECUTE:
-  IR = C(IC++);
-  Y = IR[address] - X(IR[tag]);
-  GOTO I[opcode];
-```
-
-Here `IR` is the instruction register, holding the instruction read from memory at the location of `IC`, and `Y` is the effective address, used by most operations. It is the address field of the instruction with the index of the tag field *subtracted*.
-
-## Indicators
-
-*Indicator* bits are set by some operations. They remain set until tested. The *accumulator overflow* and *multiplier-quotient overflow* indicators are used in `MISRT1`.
 
 ## Integer representation
 
 The full word integer representation is sign-magnitude, not twos complement. Position `S` specifies the sign, `0` for `+` and `1` for `-`. The remaining bits specify the magnitude (absolute value). A 36 bit word \(W\) represents the integer \((1-2W_S)W_{1-35}\). An integer is 0 when the magnitude is 0, regardless of the sign. When no sign is written, `+` is assumed.
 
-When words representing integers are written using octal notation, they may be written with a separate sign or with `S` folded into the first digit. The values \(-2\) through \(2\) follow, written using the signed and unsigned formats and are compared with the twos complement representation:
+The values \(-2\) through \(2\) follow, written using the signed and unsigned formats and are compared with the twos complement representation:
 ```
                                      Twos
          Signed      Unsigned      Complement
 -2 : -000000000002 400000000002   777777777776
 -1 : -000000000001 400000000001   777777777777
--0 : -000000000000 400000000000   000000000000
-+0 : +000000000000 000000000000   000000000000
+-0 : -000000000000 400000000000   
+ 0 :                              000000000000
++0 : +000000000000 000000000000   
 +1 : +000000000001 000000000001   000000000001
 +2 : +000000000002 000000000002   000000000010
 ```
@@ -200,12 +180,33 @@ VALUE      |      OCTAL      |                     BINARY
 ```
 The floating point representation was designed so that the floating point and integer representations of 0 are the same and so that integer comparison can be used to compare normalized floating point values.
 
-## Additional 704 information
+## Instructions
+
+Each instruction is a full 36 bit word. The `IC`, or *instruction counter*, contains the address of the next instruction to be executed. A clock cycle is 12 microseconds. Most instructions require two cycles, but some require more. The manual states that about 40,000 instructions/second are executed in normal use, which corresponds to about two cycles per instruction.
+
+Bit positions `18-20` of a word are called the `tag` and positions `21-35` are called the `address`. The tag and address are used to compute an effective address `Y` for *indexable* operations by subtracting the index value from the specified address.
+
+Pseudocode for the basic instruction cycle is:
+```
+EXECUTE:
+  IR = C(IC++);
+  Y = IR[address] - X(IR[tag]);
+  GOTO I[opcode];
+```
+
+Here `IR` is the instruction register, holding the instruction read from memory at the location of `IC`, and `Y` is the effective address, used by most operations as a source and/or destination memory cell.
+
+## Indicators
+
+*Indicator* bits are set by some operations. They remain set until tested. The *accumulator overflow* and *multiplier-quotient overflow* indicators are used in `MISRT1`.
+
+## Some additional 704 resources
 
  - [IBM 701](https://bitsavers.org/pdf/ibm/701/) Scanned 701 information. The 704 started as a revision to the 701.
  - [An Interview with GENE M. AMDAHL](https://conservancy.umn.edu/server/api/core/bitstreams/5f173919-6c38-4b0d-9812-24a3734fd35f/content) Architect of the 704.
  - [IBM 704](https://bitsavers.org/pdf/ibm/704/) Scanned 704 information.
    - [IBM 704 electronic data-processing machine](https://bitsavers.org/pdf/ibm/704/24-6661-2_704_Manual_1955.pdf).
+   - [CODING for the MIT-IBM 704 COMPUTER](https://bitsavers.org/pdf/mit/computer_center/Coding_for_the_MIT-IBM_704_Computer_Oct57.pdf)
  - Scanned information about follow-on processors in the same family:
    - [IBM 709](https://bitsavers.org/pdf/ibm/709/) faster, added additional capabilities, particularly in I/O.
    - [IBM 7090](https://bitsavers.org/pdf/ibm/7090/) faster with transistors.
@@ -213,11 +214,11 @@ The floating point representation was designed so that the floating point and in
 
 # SAP source format
 
-Each line contains exactly 80 characters, corresponding to one 80 column IBM punched card. A typical card (produced by [mass:werk](https://www.masswerk.at/card-readpunch/)) would look something like:
+Each line contains exactly 80 characters, corresponding to one 80 column IBM punched card. A typical card (produced by [mass:werk](https://www.masswerk.at/card-readpunch/)) would have looked something like:
 
 ![MISRT1009 Card](images/MISRT1009.png)
 
-The character encoding used on cards was easily converted to six bit character encodings used on tape and in memory. There are no encodings for lowercase letters and a number of common symbols. This is why old programs are uppercase. Surprisingly, there are encodings for a few symbols that are not in Unicode.
+The character encoding used on cards is easily converted to six bit character encodings used on tape and in memory. There are no encodings for lowercase letters and a number of common symbols, so programs are uppercase. Surprisingly, there are a few card symbols that are not in Unicode.
 
 SAP source cards are divided into fields based on column positions:
 - [1-6] An optional label. When read, all blanks are removed, so `OLD X` and `OLDX` are the same.
@@ -226,17 +227,17 @@ SAP source cards are divided into fields based on column positions:
 - [11] Blank.
 - [12-80] The *variable field*, up to the first blank. The variable field contains comma-separated parameters. Any characters after the first blank are for comments.
 
-It was common to use the columns on the right side of the card for sequencing information. Since this was in the comment area it was ignored by the assembler. When a deck of cards was accidentally dropped the line numbers were used to reorder them. Here they will be used to reference particular lines in the program.
+It was common to use columns on the right side of a card for sequencing and identification. Since this was in the comment area it was ignored by the assembler. When a deck of cards was accidentally dropped these columns could be used to regroup and reorder them. Here they will be used to reference lines in the program.
 
 ## Using MISRT1 in a program
 
-Understanding programs from the 1950s can be challenging. For example, even though \(\sqrt{}\) is a function, `MISRT1` is not a function in the current sense. A function returns to the instruction after its caller it completes, while invoking an IBM 704 subroutine is more like [continuation passing](https://en.wikipedia.org/wiki/Continuation). A subroutine is branched to and provided a pointer to a call vector containing arguments, space for return values, and branch targets. When the subroutine completes its work it will branch to one of the branch targets after setting appropriate return values for that target. Although this may seem like a strange way to do things, it is similar to several IBM 704 instructions that have multiple return points. Even on modern architectures conditional branches have two return points and compilers use similar representations during their analysis.
+Understanding programs from the 1950s can be challenging. For example, even though calculating the square root of a number is a function, `MISRT1` is not written as a function. A function is called and when it completes it returns to the instruction after its caller. Invoking an IBM 704 subroutine is more like [continuation passing](https://en.wikipedia.org/wiki/Continuation). A subroutine is branched to and provided with the address of what is now called a frame: a vector containing arguments, space for return values, and branch targets for when the subroutine has completed its work. The address of the frame is the address immediately following the instruction that transfers execution to the subroutine. When the subroutine completes its work, it will branch to one of the branch targets in the frame after setting appropriate return values for that target. Although this may seem like a strange way to do things, it is similar to several IBM 704 instructions that continue at one of several following instructions. Compilers use similar representations of programs during their analysis.
 
-SHARE and IBM established conventions so that subroutines could be used reliably. One was that `X(4)` was always used for the call vector. Two more conventions were that the first argument and first result were passed in `AC` rather than the call vector.
+SHARE and IBM established conventions so that subroutines could be used reliably. One was that the address of the frame was in `X(4)`. Two more conventions were that the first argument and first result were passed in `AC` rather than the frame.
 
-Although there was no control stack and function frame, most subroutines still required temporary storage. With at most 32,768 words of memory, programs would often stash small temporary values in unused bits of instructions. When whole words were required, the SHARE convention was that a block of storage starting at a location named `COMMON` would be used. Subroutines would indicate how much space in `COMMON` they required, so the programmer could reserve space for the maximum size required by all of its subroutines.
+Most functions require temporary storage. Today's frames provide space for temporary storage, but today's frames only use storage while they are active. With the frame's storage being in the addresses immediately following the calling instruction, storing temporary values in the frame would have required permanent storage for temporary values in every call site. With limited memory this was not desirable. In some cases, unused parts of instruction words in a subroutine were used to store small temporary values. This could be extended to provide some additional space in the subroutine for storing temporary values. Although better than having the space allocated for every call, this still meant that the temporary storage for each subroutine was permanently allocated even if the subroutine was not active.  Instead, each subroutine indicated how much temporary storage it required and it was up to the caller to ensure there was enough space at an address named `COMMON` shared by all subroutines.
 
-All symbols in SAP have global scope. If subroutines used symbolic addresses to make the subroutine implementation easier to understand and maintain there would be name collisions between a program and all the subroutines it was using. Another convention was that subroutines should only use a label for their entry point and reference all subroutine addresses relative to the entry point or relative to the instruction counter.
+All symbols in SAP have global scope. If subroutines used symbolic addresses to make the subroutine implementation easier to understand and maintain there would be name collisions between a program and all the subroutines it was using. A SHARE convention was that subroutines should only use a label for their entry point and reference all subroutine addresses relative to the entry point or relative to the instruction counter.
 
 The first few lines of `MISRT1` describe use of the routine:
 ```
@@ -252,7 +253,7 @@ The first few lines of `MISRT1` describe use of the routine:
 
 `REM` is a pseudo-op for a *remark* or comment, so this entire block is documentation and will not take up any storage in the assembled program. It states that the subroutine takes up 37 words of storage and requires `COMMON` to contain at least two words.
 
-The subroutine uses the first continuation when there is a negative argument and the second continuation when the computation is successful. The second continuation is at the end of the call vector and is just the next instruction to be executed. The first continuation would be a branch to error-handling code.
+The subroutine uses the first continuation when there is a negative argument and the second continuation when the computation is successful. The second continuation is at the end of the frame and is just the next instruction to be executed. The first continuation would be a branch to error-handling code.
 
 Following is a simple use of `MISRT1` to compute \(\sqrt{2}\):
 
@@ -263,6 +264,7 @@ Following is a simple use of `MISRT1` to compute \(\sqrt{2}\):
        REM  DO SOMETHING WITH RESULT
        ...
 TWO    DEC 2.0
+COMMON BSS 2
 ```
 
 ```
@@ -273,6 +275,8 @@ CLA:
   GOTO EXECUTE;
 ```
 The first operand, `TWO` is the address. The second operand is the tag, which is 0 when omitted. `TWO` is defined at the end as a floating point 2.0 constant, using the `DEC` *decimal* pseudo-op. The result is that `AC` contains the floating point representation of 2.0.
+
+The two required words of `COMMON` storage are allocated by the `BSS` pseudo-op: *block starting symbol*, which survives from SAP to this day.
 
 The `TSX` instruction, *transfer and set index*, is not indexable. Pseudocode is:
 ```
@@ -315,7 +319,7 @@ TZE:
   }
   GOTO EXECUTE;
 ```
-The effective address is word 2 of the call vector, the normal return. Since `AC` has not been changed, the result is 0.
+The effective address is word 2 of the frame, the normal return. Since `AC` has not been changed, the result is 0.
 
 ## Error for negative argument
 
@@ -332,7 +336,7 @@ TMI:
   }
   GOTO EXECUTE;
 ```
-The effective address is word 1 in the call vector, the alarm address. Since `AC` has not been changed, exception handling can take action based on the value of the argument.
+The effective address is word 1 in the frame, the alarm address. Since `AC` has not been changed, exception handling can take action based on the value of the argument.
 
 ## Heron's square root formula
 
@@ -399,7 +403,7 @@ $$
 
 The following explanations include symbolic and actual binary results from [simh IBM 704 emulation](https://github.com/open-simh/simh) of the bit manipulations corresponding to the two fraction limits and one intermediate fraction for each of the two fraction ranges. Symbolic representations of the characteristic and fraction are in terms of the original characteristic bits `C` and fraction bits `F`. For example, if `C = 01101100` then `C[2-5]` is `1101` and `C[1-5]` is `01101`. Literals may be interspersed, as in `0 C[2,3] 1 = 0111`.
 
-At the start of instruction `MISRT1011`, `AC` holds a positive normalized floating point value, such as the following:
+At the start of instruction `MISRT1011`, `AC` holds a positive normalized floating point value, such as one of the following:
 ```
  x  | S | QP | CHAR     | FRACTION
     | 0 | 00 | C[1-8]   | F[1-27]
@@ -432,7 +436,7 @@ STO {
   C(Y) = AC[S,1-35];
 }
 ```
-The two line comment is one sentence. By truncating the 27 bit fraction to 26 bits, the computation of the average in Heron's method (described below) will be able to be performed with integer arithmetic.
+The two line comment is one sentence. By truncating the 27 bit fraction to 26 bits, the computation of the average in Heron's method will be able to be performed with integer arithmetic.
 
 `AC` now contains:
 ```
@@ -552,7 +556,7 @@ COMMON+1
 
 ## Fraction
 
-The computation of \(d\) is almost complete, but the fraction \(\hat{g}=\sqrt{2^{-c_8}\hat{f}}\) must still be computed, starting with the first approaximation \(\hat{g}_0\). Let \(\hat{g}_0=\hat{g}\) when \(\hat{f}\) is \(\frac{1}{2}\) and 1. 
+The computation of \(d\) is almost complete, but the fraction \(\hat{g}=\sqrt{2^{-c_8}\hat{f}}\) must also be computed, starting with the first approximation \(\hat{g}_0\). Let \(\hat{g}_0=\hat{g}\) when \(\hat{f}\) is \(\frac{1}{2}\) and 1. 
 
 $$
 \begin{align*}
@@ -599,7 +603,7 @@ The fraction is shifted so that its first bit is in `AC[Q]`. It will be simplest
 .70 | 0 | 0 101 100 110 011 001 100 110 011 010 000 000 000
 .99 | 0 | 0 111 111 111 111 111 111 111 111 110 000 000 000
 ```
-Using the 704 bit numbering for a word, the characteristic is in bits 1-8, so shifting left 10 bits moves the entire characteristic through `P`. Thus, if the characteristic is not 0, the overflow indicator will be set. If the characteristic is 0, it is even and a 1 will be shifted into `P`, again setting the overflow indicator.  The overflow indicator will remain set until it is explicitly cleared.
+The characteristic is in bits 1-8, so shifting left 10 bits moves the entire characteristic through `P`. Thus, if the characteristic is not 0, the overflow indicator will be set. If the characteristic is 0, it is even and a 1 will be shifted into `P`, again setting the overflow indicator.  The overflow indicator will remain set until it is explicitly cleared.
 
 ---
 
@@ -724,7 +728,7 @@ $$
 \frac{7}{16}\hat{f}-\frac{3}{16}-2^{-27}+\frac{15}{32}+2^{-27}&=\frac{7}{16}\hat{f}+\frac{9}{32}&c_8=1.
 \end{align*}
 $$
-Aside from the \(2^{-27}\) in the even case, these correspond to the linear approximation determined earlier.  Why the \(2^{-27}\)? In the even case a multiple of the fraction is to be subtracted by adding, which requires a twos complement. The 704 only has ones complement, which will be off by 1, or \(2^{-27}\). Including the \(2^{-27}\) in the lumped constant corrects the odd case, while leaving it out leaves the even case correct. When \(x=1\) the characteristic is odd so including the \(2^{-27}\) in the odd case makes the linear approximation exact.
+Aside from the \(2^{-27}\) in the even case, these correspond to the linear approximation determined earlier.  Why the \(2^{-27}\)? In the even case a multiple of the fraction is to be subtracted by adding, which requires a twos complement. The 704 only has ones complement, which will be off from twos complement by 1, or \(2^{-27}\). Including the \(2^{-27}\) in the lumped constant corrects the odd case, while leaving it out leaves the even case correct. When \(x=1\) the characteristic is odd so including the \(2^{-27}\) in the odd case makes the linear approximation exact.
 ```
  x  | S | QP | CHAR     | FRACTION
 .25 | 0 | 00 | 10000000 | 100 000 000 000 000 000 000 000 000
@@ -880,7 +884,7 @@ $$
 
 ---
 
-There is one other detail to be dealt with. The above is for exact arithmetic. For the `.99` case, `COMMON+1` is 27 1s. If we had not cleared the low bit of \(f\), it would also have been 27 1s and division would have result in a fraction of 1. This would have been shifted right one and the exponent increased. The `ANA` in instruction `MISRT1011` ensures that the value in `COMMON` is less than `COMMON+1` so that the division is not 1 and the exponent is not increased.
+There is one other detail to be dealt with. The above argument is for exact arithmetic. For the `.99` case, `COMMON+1` is 27 1s. If we had not cleared the low bit of \(f\), it would also have been 27 1s and division would have result in a fraction of 1. This would have been shifted right one and the exponent increased. The `ANA` in instruction `MISRT1011` ensures that the value in `COMMON` is less than `COMMON+1` so that the division is not 1 and the exponent is not increased.
 
 ```
        CLA COMMON+1                                                    MISRT1028
@@ -894,7 +898,7 @@ STQ:
   GOTO EXECUTE;
 ```
 
-\(\frac{x}{y_0}\) and \(y_0\) must be averaged. Unfortunately, 704 data paths were limited and there isn't a way to add `MQ` and `AC` without going through memory.
+\(\frac{x}{y_0}\) and \(y_0\) must be averaged. Unfortunately, 704 data paths are limited and there isn't a way to add `MQ` and `AC` without going through memory.
 
 But `ADD` is an integer add, not a floating point add. How can this work? The exponents of \(y_n\) and \(\frac{x}{y_n}\) will both be the same, \(d\), so the points are aligned and there is no need to shift fractions and adjust exponents during the addition. The value \(2d\) will be in `AC[P-8]`. This is even, so `AC[8]` will be 0 unless there is a carry from adding the fractions. Since fraction bit 1 of both `COMMON+1` and `FDP` are 1, there will be a carry and `AC[8]` will be 1. The result is the normalized floating point sum, shifted left by 1 and needs to be shifted right:
 
