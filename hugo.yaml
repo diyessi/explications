@@ -7,6 +7,12 @@ theme: hugo-flex
 params:
   width: 52rem
   math: true
+  mathdelim: &md
+    block:              # List of pairs of "display" math delimiters
+      - ['\[', '\]']
+      - ['$$', '$$']
+    inline:             # List of pairs of inline math delimiters
+      - ['\(', '\)']
 
 markup:
   goldmark:
