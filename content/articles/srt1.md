@@ -98,7 +98,7 @@ AC: S Q P 1 2 3 4 ... 35
 MQ: S     1 2 3 4 ... 35
 ```
 
-In mathematical notation, \\(R_{S,1-11}\\) denotes the high 12 bits of a 36 bit word. This notation is also used in the 704 manual. Since markdown does not support subscripts, the notation `R[S,1-11]` is used in textual contexts.
+In mathematical notation, \\(R_{S,1-11}\\\) denotes the high 12 bits of a 36 bit word. This notation is also used in the 704 manual. Since markdown does not support subscripts, the notation `R[S,1-11]` is used in textual contexts.
 
 Values were normally written in octal. The bit in the `S` position was either written as `+` or `-` for `0` and `1` respectively, or included in the high order octal digit, as in the four constants at the end of the `MISRT1` listing. In the descriptions of `MISRT1`, binary will often be used to better illustrate the effects of shifts.
 
@@ -110,9 +110,9 @@ Three *index* registers hold 12, 13, or 15 bits, depending on the memory configu
 
 ## Integer representation
 
-The full word integer representation is sign-magnitude, not twos complement. Position `S` specifies the sign, `0` for `+` and `1` for `-`. The remaining bits specify the magnitude (absolute value). A 36 bit word \(W\) represents the integer \((1-2W_S)W_{1-35}\). An integer is 0 when the magnitude is 0, regardless of the sign. When no sign is written, `+` is assumed.
+The full word integer representation is sign-magnitude, not twos complement. Position `S` specifies the sign, `0` for `+` and `1` for `-`. The remaining bits specify the magnitude (absolute value). A 36 bit word \\(W\\) represents the integer \\((1-2W_S)W_{1-35}\\). An integer is 0 when the magnitude is 0, regardless of the sign. When no sign is written, `+` is assumed.
 
-The values \(-2\) through \(2\) follow, written using the signed and unsigned formats and are compared with the twos complement representation:
+The values \\(-2\\) through \\(2\\) follow, written using the signed and unsigned formats and are compared with the twos complement representation:
 ```
                                      Twos
          Signed      Unsigned      Complement
@@ -127,9 +127,9 @@ The values \(-2\) through \(2\) follow, written using the signed and unsigned fo
 
 ## Floating point representation
 
-The floating point representation divides a word into three unsigned integer fields: a one bit *sign* \(s\) in the sign bit `S`, an eight bit *characteristic* \(c\) in bits 1 through 8, and a 27 bit *fraction* \(f\) in bits 9 through 35. The sign is used in the same way as with the integer representation. The characteristic is the binary exponent biased by 128 and the fraction is scaled by \(2^{-27}\).
+The floating point representation divides a word into three unsigned integer fields: a one bit *sign* \\(s\\) in the sign bit `S`, an eight bit *characteristic* \\(c\\) in bits 1 through 8, and a 27 bit *fraction* \\(f\\) in bits 9 through 35. The sign is used in the same way as with the integer representation. The characteristic is the binary exponent biased by 128 and the fraction is scaled by \\(2^{-27}\\).
 
-The floating point value \(v\) associated with a sign of \(s\), characteristic \(c\), and fraction \(f\) is
+The floating point value \\(v\\) associated with a sign of \\(s\\), characteristic \\(c\\), and fraction \\(f\\) is
 $$
 \begin{aligned}
 v&=(1-2s) 2^{c-128}2^{-27}f\\
@@ -154,8 +154,8 @@ VALUE   S    C        F
 1.0   | 0 | 203 | 100000000
 ```
 The representation is called *normalized* when
- - \(f=0\) and \(c=0\) 
- - \(f \ge 2^{26}\), i.e. the first bit of the fraction, \(f_1\) is 1, so that \(\frac{1}{2}\le\hat{f}<1\).
+ - \\(f=0\\) and \\(c=0\\) 
+ - \\(f \ge 2^{26}\\), i.e. the first bit of the fraction, \\(f_1\\) is 1, so that \\(\frac{1}{2}\le\hat{f}<1\\).
 
 When `AC` holds a normalized floating point representation, `Q` and `P` will be 0.
 
@@ -255,7 +255,7 @@ The first few lines of `MISRT1` describe use of the routine:
 
 The subroutine uses the first continuation when there is a negative argument and the second continuation when the computation is successful. The second continuation is at the end of the frame and is just the next instruction to be executed. The first continuation would be a branch to error-handling code.
 
-Following is a simple use of `MISRT1` to compute \(\sqrt{2}\):
+Following is a simple use of `MISRT1` to compute \\(\sqrt{2}\\):
 
 ```
        CLA TWO
@@ -301,7 +301,7 @@ An indexable branch to `1,4` will branch to the warning address, while a branch 
 
 # The MISRT1 routine
 
-Given a normalized floating point representation \([s,c,f]\) for \(x\) in `AC`, the routine returns with a normalized floating point representation \([s, d, g]\) for \(y=\sqrt{x}\) in `AC` if \(x\not < 0\) and indicates an error if \(x < 0\).
+Given a normalized floating point representation \\([s,c,f]\\) for \\(x\\) in `AC`, the routine returns with a normalized floating point representation \\([s, d, g]\\) for \\(y=\sqrt{x}\\) in `AC` if \\(x\not < 0\\) and indicates an error if \\(x < 0\\).
  
 ## Special case for 0
 
@@ -340,13 +340,13 @@ The effective address is word 1 in the frame, the alarm address. Since `AC` has 
 
 ## Heron's square root formula
 
-The remainder of the square root routine is based on Heron's square root formula. Given an approximation \(y_n\approx \sqrt{x}\), Heron's formula gives a better approximation
+The remainder of the square root routine is based on Heron's square root formula. Given an approximation \\(y_n\approx \sqrt{x}\\), Heron's formula gives a better approximation
 $$
 y_{n+1} = \frac{1}{2}\left(y_n+\frac{x}{y_n}\right).
 $$
 
-To see how quickly this converges, let the error \(\epsilon_n=y_n-\sqrt{x}\). If \(\epsilon_n=0\) then 
-\(y_n=\sqrt{x}\) so \(\frac{x}{y_n}=y_n\), \(y_{n+1}=y_n\) and \(\epsilon_{n+1}=0.\)
+To see how quickly this converges, let the error \\(\epsilon_n=y_n-\sqrt{x}\\). If \\(\epsilon_n=0\\) then 
+\\(y_n=\sqrt{x}\\) so \\(\frac{x}{y_n}=y_n\\), \\(y_{n+1}=y_n\\) and \\(\epsilon_{n+1}=0.\\)
 
 Otherwise, one application of Heron's formula gives:
 $$
@@ -358,9 +358,9 @@ $$
 &=\frac{\epsilon_n^2}{2y_n}
 \end{align*}
 $$
-Whether \(\epsilon_0\) is negative or positive, \(\epsilon_n\) is positive for \(n>0\). The linear approximation is exact for odd exponents when \(\hat{f}=1\) and otherwise less than \(\sqrt{x}\).
+Whether \\(\epsilon_0\\) is negative or positive, \\(\epsilon_n\\) is positive for \\(n>0\\). The linear approximation is exact for odd exponents when \\(\hat{f}=1\\) and otherwise less than \\(\sqrt{x}\\).
 
-The error after \(n\) iterations can be estimated as:
+The error after \\(n\\) iterations can be estimated as:
 $$
 \begin{align*}
 \epsilon_n&=\frac{1}{2}\frac{\epsilon_n^2}{\epsilon_n+\sqrt{x}}\\
@@ -372,17 +372,17 @@ $$
 
 Before applying Heron's formula an initial approximation must be found.
 
-At this point it is known that \(x>0\) and thus \(y > 0\).
+At this point it is known that \\(x>0\\) and thus \\(y > 0\\).
 
-Since \(x=y^2\), \(\hat{c}\) and \(\hat{f}\) can be computed from \(\hat{d}\) and \(\hat{g}\):
+Since \\(x=y^2\\), \\(\hat{c}\\) and \\(\hat{f}\\) can be computed from \\(\hat{d}\\) and \\(\hat{g}\\):
 $$
 2^{\hat{c}}\hat{f}=x=y^2=2^{2\hat{d}}\hat{g}^2.
 $$
-Since \(f\) must be in normalized form there are two cases for computing the exponent and fraction:
-1) If \(\frac{1}{2}\le \hat{g}<\sqrt{\frac{1}{2}}\) then \(\frac{1}{4}\le\hat{g}^2<\frac{1}{2}\). Since \(\hat{g}^2\) is not in the range of a normalized fraction, the exponent must be reduced by 1 it and the fraction multiplied by 2 and to put the fraction in normalized form. Then \(\hat{c}=2\hat{d}-1\) and \(\hat{f}=2\hat{g}^2\).
-2) If \(\sqrt{\frac{1}{2}}\le \hat{g} < 1\) then \(\frac{1}{2}\le\hat{g}^2<1\) and \(\hat{g}^2\) is normalized so \(\hat{c}=2\hat{d}\) and \(\hat{f}=\hat{g}^2\).
+Since \\(f\\) must be in normalized form there are two cases for computing the exponent and fraction:
+1) If \\(\frac{1}{2}\le \hat{g}<\sqrt{\frac{1}{2}}\\) then \\(\frac{1}{4}\le\hat{g}^2<\frac{1}{2}\\). Since \\(\hat{g}^2\\) is not in the range of a normalized fraction, the exponent must be reduced by 1 it and the fraction multiplied by 2 and to put the fraction in normalized form. Then \\(\hat{c}=2\hat{d}-1\\) and \\(\hat{f}=2\hat{g}^2\\).
+2) If \\(\sqrt{\frac{1}{2}}\le \hat{g} < 1\\) then \\(\frac{1}{2}\le\hat{g}^2<1\\) and \\(\hat{g}^2\\) is normalized so \\(\hat{c}=2\hat{d}\\) and \\(\hat{f}=\hat{g}^2\\).
 
-The two cases can be combined since \(c_8\) is 1 in the first case and 0 in the second:
+The two cases can be combined since \\(c_8\\) is 1 in the first case and 0 in the second:
 $$
 \begin{align*}
 \hat{c}&=2\hat{d}-c_8\\
@@ -390,7 +390,7 @@ $$
 \end{align*}
 $$
 
-For the square root \(\hat{d}\) and \(\hat{g}\) are needed.
+For the square root \\(\hat{d}\\) and \\(\hat{g}\\) are needed.
 $$
 \begin{align*}
 \hat{d}&=\frac{\hat{c}+c_8}{2}\\
@@ -472,7 +472,7 @@ This time `AC` is ANDed with:
 ```
        OCT 001000000000      MASK FOR CHAR MOD 1                       MISRT1043
 ```
-Although the comment refers to `CHAR MOD 1` this actually leaves \(c \mod 2\) in the characteristic position and zeros out the rest of `AC`.
+Although the comment refers to `CHAR MOD 1` this actually leaves \\(c \mod 2\\) in the characteristic position and zeros out the rest of `AC`.
 ```
  x  | S | QP | CHAR     | FRACTION
     | 0 | 00 |     C[8] | 000 000 000 000 000 000 000 000 000
@@ -522,7 +522,7 @@ ADD:
   AC += C(Y);
   GOTO EXECUTE;
 ```
-Since `COMMON` is normalized, the first bit of the fraction is 1. If `AC[9] = 1` (odd \(c\)) then adding `COMMON` to `AC` will add 1 to the first bit of the fraction, turning it to 0, and carry into the characteristic, adding 1 to it. This may generate a carry into `AC[P]`. It is simplest in this section to treat the characteristic as `AC[Q-8]`.  The characteristic is even and \(c+c_8\) and the fraction is \(\hat{f}-\frac{c_8}{2}\).
+Since `COMMON` is normalized, the first bit of the fraction is 1. If `AC[9] = 1` (odd \\(c\\)) then adding `COMMON` to `AC` will add 1 to the first bit of the fraction, turning it to 0, and carry into the characteristic, adding 1 to it. This may generate a carry into `AC[P]`. It is simplest in this section to treat the characteristic as `AC[Q-8]`.  The characteristic is even and \\(c+c_8\\) and the fraction is \\(\hat{f}-\frac{c_8}{2}\\).
 ```
  x  | S |  CHAR       | FRACTION
     | 0 | C+C[8]      | (1-C[8]) F[2-26]0
@@ -556,7 +556,7 @@ COMMON+1
 
 ## Fraction
 
-The computation of \(d\) is almost complete, but the fraction \(\hat{g}=\sqrt{2^{-c_8}\hat{f}}\) must also be computed, starting with the first approximation \(\hat{g}_0\). Let \(\hat{g}_0=\hat{g}\) when \(\hat{f}\) is \(\frac{1}{2}\) and 1. 
+The computation of \\(d\\) is almost complete, but the fraction \\(\hat{g}=\sqrt{2^{-c_8}\hat{f}}\\) must also be computed, starting with the first approximation \\(\hat{g}_0\\). Let \\(\hat{g}_0=\hat{g}\\) when \\(\hat{f}\\) is \\(\frac{1}{2}\\) and 1. 
 
 $$
 \begin{align*}
@@ -568,7 +568,7 @@ $$
 \end{cases}
 \end{align*}
 $$
-Both cases involve a floating point multiplication (17 cycles) and addition (7 cycles). Since this is already an approximation, it can be approximated a little faster by using integer operations, in particular adds and shifts, which are 2 cycles each. Since \(16\sqrt{2}\approx 23\), \(\sqrt{2}\) can be replaced with \(\frac{23}{16}\) to get:
+Both cases involve a floating point multiplication (17 cycles) and addition (7 cycles). Since this is already an approximation, it can be approximated a little faster by using integer operations, in particular adds and shifts, which are 2 cycles each. Since \\(16\sqrt{2}\approx 23\\), \\(\sqrt{2}\\) can be replaced with \\(\frac{23}{16}\\) to get:
 $$
 \hat{g}_0=
 \begin{cases}
@@ -625,7 +625,7 @@ COM:
   AC[Q-35] = ~AC[Q-35];
   GOTO EXECUTE;
 ```
-If \(c_8=0\) the next instruction is skipped. The `COM` operation complements `AC[Q-35]`.
+If \\(c_8=0\\) the next instruction is skipped. The `COM` operation complements `AC[Q-35]`.
 ```
  x  | S | Q-35
     | 0 | c8 ? (2^38-1)-00F[2-26]*2^10 : 01F[2-26]*2^10
@@ -675,10 +675,10 @@ where `SQRT+35` is:
 .70 | 0 | 00 | 00000000 | 000 000 110 011 001 100 110 011 001
 .99 | 0 | 00 | 00000000 | 000 001 111 111 111 111 111 111 111
 ```
-Since `F[1] = 1`, a fraction of `0F[2-27]` is \(\hat{f}-1/2\). Here the `F[2-27]` has been shifted right by 4, which would give
+Since `F[1] = 1`, a fraction of `0F[2-27]` is \\(\hat{f}-1/2\\). Here the `F[2-27]` has been shifted right by 4, which would give
 $$\frac{\hat{f}}{16}-\frac{1}{32},$$ which is the fraction for the even case. 
 
-For the odd case, subtract this from \((2^{22}-1)2^{-27}=\frac{1}{32}+2^{-27}\) to get $$-\frac{\hat{f}}{16}+\frac{1}{16}-2^{-27}.$$
+For the odd case, subtract this from \\((2^{22}-1)2^{-27}=\frac{1}{32}+2^{-27}\\) to get $$-\frac{\hat{f}}{16}+\frac{1}{16}-2^{-27}.$$
 
 ---
 
@@ -721,14 +721,14 @@ This constant is:
 S | CHAR     | FRACTION
 0 | 01000000 | 011 110 000 000 000 000 000 000 001
 ```
-The characteristic is 64, the amount still needed to add to the characteristic to get \(d\). The fraction is \(15/32+2^{-27}\). Adding to the previous fraction gives:
+The characteristic is 64, the amount still needed to add to the characteristic to get \\(d\\). The fraction is \\(15/32+2^{-27}\\). Adding to the previous fraction gives:
 $$
 \begin{align*}
 \frac{9}{16}\hat{f}-\frac{1}{32}+\frac{15}{32}+2^{-27}&=\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}&c_8=0,\\
 \frac{7}{16}\hat{f}-\frac{3}{16}-2^{-27}+\frac{15}{32}+2^{-27}&=\frac{7}{16}\hat{f}+\frac{9}{32}&c_8=1.
 \end{align*}
 $$
-Aside from the \(2^{-27}\) in the even case, these correspond to the linear approximation determined earlier.  Why the \(2^{-27}\)? In the even case a multiple of the fraction is to be subtracted by adding, which requires a twos complement. The 704 only has ones complement, which will be off from twos complement by 1, or \(2^{-27}\). Including the \(2^{-27}\) in the lumped constant corrects the odd case, while leaving it out leaves the even case correct. When \(x=1\) the characteristic is odd so including the \(2^{-27}\) in the odd case makes the linear approximation exact.
+Aside from the \\(2^{-27}\\) in the even case, these correspond to the linear approximation determined earlier.  Why the \\(2^{-27}\\)? In the even case a multiple of the fraction is to be subtracted by adding, which requires a twos complement. The 704 only has ones complement, which will be off from twos complement by 1, or \\(2^{-27}\\). Including the \\(2^{-27}\\) in the lumped constant corrects the odd case, while leaving it out leaves the even case correct. When \\(x=1\\) the characteristic is odd so including the \\(2^{-27}\\) in the odd case makes the linear approximation exact.
 ```
  x  | S | QP | CHAR     | FRACTION
 .25 | 0 | 00 | 10000000 | 100 000 000 000 000 000 000 000 000
@@ -758,7 +758,7 @@ COMMON+1
 
 ## Error of the linear approximation
 
-The linear approximation will be less than \(\sqrt{2^{-c_8}\hat{f}}\) between \(\frac{1}{2}\) and 1, so the error \(\epsilon_0\) will be:
+The linear approximation will be less than \\(\sqrt{2^{-c_8}\hat{f}}\\) between \\(\frac{1}{2}\\) and 1, so the error \\(\epsilon_0\\) will be:
 $$
 \begin{align*}
 \epsilon_0&=\sqrt{2^{-c_8}\hat{f}}-\sqrt{2^{-c_8}}\left(\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1\right)\\
@@ -769,9 +769,9 @@ The error is maximized when
 $$
 \hat{f}=\frac{3+2\sqrt{2}}{8}\approx .729,
 $$
-giving a maximum error of about \(\epsilon_0=.0126\) when the exponent is odd.
+giving a maximum error of about \\(\epsilon_0=.0126\\) when the exponent is odd.
 
-Two applications of Heron's methods with \(\epsilon_0=.0126\) at \(x=.729\) give:
+Two applications of Heron's methods with \\(\epsilon_0=.0126\\) at \\(x=.729\\) give:
 $$
 \begin{align*}
 \epsilon_n&\approx \epsilon_0 \left(\frac{\epsilon_0}{2\sqrt{x}}\right)^{2^n}\\
@@ -783,14 +783,14 @@ Thus, two applications of Heron's formula will be have more than the 27 bit prec
 
 ## The first Heron
 
-At this point, `COMMON` contains \(x\) with exponent \(c\) and fraction \(f\) and `COMMON+1` contains \(y_0\), the linear approximation, with exponent \(d\) and fraction \(g\).
+At this point, `COMMON` contains \\(x\\) with exponent \\(c\\) and fraction \\(f\\) and `COMMON+1` contains \\(y_0\\), the linear approximation, with exponent \\(d\\) and fraction \\(g\\).
 
 ---
 
 ```
        CLA COMMON            ITERATE Y(2)                              MISRT1026
 ```
-`AC` now contains \(x\).
+`AC` now contains \\(x\\).
 
 ---
 
@@ -839,9 +839,9 @@ FDP      | 0 | 10000000 | 111 111 111 111 111 111 111 111 110
 
 ---
 
-In the next step the first approximation, `COMMON+1`, and the division result, `FDP`, must have the same exponent. Notice how this is true for all the examples. To see that it is true in general, the even and odd exponent cases must be examined. In both cases, \(\frac{1}{2}\le \hat{g}_0< 1\).
+In the next step the first approximation, `COMMON+1`, and the division result, `FDP`, must have the same exponent. Notice how this is true for all the examples. To see that it is true in general, the even and odd exponent cases must be examined. In both cases, \\(\frac{1}{2}\le \hat{g}_0< 1\\).
 
-In the even case to prevent a change in exponent, ensure that \(\frac{1}{2}\le\frac{\hat{f}}{\hat{g}_0}<1\). For the lower bound,
+In the even case to prevent a change in exponent, ensure that \\(\frac{1}{2}\le\frac{\hat{f}}{\hat{g}_0}<1\\). For the lower bound,
 $$
 \begin{align*}
 \frac{1}{2}&\le\frac{\hat{f}}{\hat{g}_0}\\
@@ -861,7 +861,7 @@ $$
 \hat{f}<1 < 1+\frac{2^{-24}}{7}.
 \end{align*}
 $$
-In the odd case, to ensure the exponent is increased by 1, ensure that \(1\le\frac{\hat{f}}{\hat{g}_0}<2\).
+In the odd case, to ensure the exponent is increased by 1, ensure that \\(1\le\frac{\hat{f}}{\hat{g}_0}<2\\).
 
 For the lower bound,
 $$
@@ -884,7 +884,7 @@ $$
 
 ---
 
-There is one other detail to be dealt with. The above argument is for exact arithmetic. For the `.99` case, `COMMON+1` is 27 1s. If we had not cleared the low bit of \(f\), it would also have been 27 1s and division would have result in a fraction of 1. This would have been shifted right one and the exponent increased. The `ANA` in instruction `MISRT1011` ensures that the value in `COMMON` is less than `COMMON+1` so that the division is not 1 and the exponent is not increased.
+There is one other detail to be dealt with. The above argument is for exact arithmetic. For the `.99` case, `COMMON+1` is 27 1s. If we had not cleared the low bit of \\(f\\), it would also have been 27 1s and division would have result in a fraction of 1. This would have been shifted right one and the exponent increased. The `ANA` in instruction `MISRT1011` ensures that the value in `COMMON` is less than `COMMON+1` so that the division is not 1 and the exponent is not increased.
 
 ```
        CLA COMMON+1                                                    MISRT1028
@@ -898,9 +898,9 @@ STQ:
   GOTO EXECUTE;
 ```
 
-\(\frac{x}{y_0}\) and \(y_0\) must be averaged. Unfortunately, 704 data paths are limited and there isn't a way to add `MQ` and `AC` without going through memory.
+\\(\frac{x}{y_0}\\) and \\(y_0\\) must be averaged. Unfortunately, 704 data paths are limited and there isn't a way to add `MQ` and `AC` without going through memory.
 
-But `ADD` is an integer add, not a floating point add. How can this work? The exponents of \(y_n\) and \(\frac{x}{y_n}\) will both be the same, \(d\), so the points are aligned and there is no need to shift fractions and adjust exponents during the addition. The value \(2d\) will be in `AC[P-8]`. This is even, so `AC[8]` will be 0 unless there is a carry from adding the fractions. Since fraction bit 1 of both `COMMON+1` and `FDP` are 1, there will be a carry and `AC[8]` will be 1. The result is the normalized floating point sum, shifted left by 1 and needs to be shifted right:
+But `ADD` is an integer add, not a floating point add. How can this work? The exponents of \\(y_n\\) and \\(\frac{x}{y_n}\\) will both be the same, \\(d\\), so the points are aligned and there is no need to shift fractions and adjust exponents during the addition. The value \\(2d\\) will be in `AC[P-8]`. This is even, so `AC[8]` will be 0 unless there is a carry from adding the fractions. Since fraction bit 1 of both `COMMON+1` and `FDP` are 1, there will be a carry and `AC[8]` will be 1. The result is the normalized floating point sum, shifted left by 1 and needs to be shifted right:
 
 ```
        LRS 1                                                           MISRT1031
