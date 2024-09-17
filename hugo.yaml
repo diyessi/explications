@@ -1,12 +1,11 @@
 baseURL: https://diyessi.github.io/explications/
 languageCode: en-us
 title: Explications
-#theme: ["github.com/theNewDynamic/gohugo-theme-ananke"]
 theme: hugo-flex
 
 params:
   width: 52rem
-  math: true
+  math: &math false
   mathdelim: &md
     block:              # List of pairs of "display" math delimiters
       - ['\[', '\]']

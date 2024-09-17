@@ -98,7 +98,7 @@ AC: S Q P 1 2 3 4 ... 35
 MQ: S     1 2 3 4 ... 35
 ```
 
-In mathematical notation, \(R_{S,1-11}\) denotes the high 12 bits of a 36 bit word. This notation is also used in the 704 manual. Since markdown does not support subscripts, the notation `R[S,1-11]` is used in textual contexts.
+In mathematical notation, \\(R_{S,1-11}\\) denotes the high 12 bits of a 36 bit word. This notation is also used in the 704 manual. Since markdown does not support subscripts, the notation `R[S,1-11]` is used in textual contexts.
 
 Values were normally written in octal. The bit in the `S` position was either written as `+` or `-` for `0` and `1` respectively, or included in the high order octal digit, as in the four constants at the end of the `MISRT1` listing. In the descriptions of `MISRT1`, binary will often be used to better illustrate the effects of shifts.
 
