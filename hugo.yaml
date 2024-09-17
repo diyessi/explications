@@ -18,10 +18,8 @@ markup:
   goldmark:
     extensions:
       passthrough:
-        enable: true
-        delimiters:
-          block: [['\[', '\]'], ['$$', '$$']]
-          inline: [['\(', '\)']]
+        enable: *math
+        delimiters: *md
 
 menu:
   main:
