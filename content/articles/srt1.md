@@ -132,15 +132,15 @@ The floating point representation divides a word into three unsigned integer fie
 The floating point value \\(v\\) associated with a sign of \\(s\\), characteristic \\(c\\), and fraction \\(f\\) is
 $$
 \begin{aligned}
-v&=(1-2s) 2^{c-128}2^{-27}f\\
+v&=(1-2s) 2^{c-128}2^{-27}f\\\\
 &=\hat{s}2^{\hat{c}}\hat{f}
 \end{aligned}
 $$
 where
 $$
 \begin{aligned}
-\hat{s}&=1-2s\\
-\hat{c}&=c-128\\
+\hat{s}&=1-2s\\\\
+\hat{c}&=c-128\\\\
 \hat{f}&=2^{-27}f.
 \end{aligned}
 $$
@@ -281,8 +281,8 @@ The two required words of `COMMON` storage are allocated by the `BSS` pseudo-op:
 The `TSX` instruction, *transfer and set index*, is not indexable. Pseudocode is:
 ```
 // Transfer and set index
-// Set the specified index to the twos complement of the location of the instruction and
-// transfer to the specified address.
+// Set the specified index to the twos complement of the location of the
+// instruction and transfer to the specified address.
 TSX {
   I = C(IC);          // Normal instruction execution
   X(I[tag]) = 1 - IC; // Twos complement of address of TSX instruction
@@ -351,10 +351,10 @@ To see how quickly this converges, let the error \\(\epsilon_n=y_n-\sqrt{x}\\). 
 Otherwise, one application of Heron's formula gives:
 $$
 \begin{align*}
-\epsilon_{n+1}&=y_{n+1}-\sqrt{x}\\
-&=\frac{1}{2}\left(y_n+\frac{x}{y_n}\right)-\sqrt{x}\\
-&=\frac{y_n^2+(y_n-e_n)^2}{2y_n}-(y_n-\epsilon_n)\\
-&=\frac{2y_n^2-2y_n\epsilon_n+\epsilon_n^2-2y_n^2+2y_n\epsilon_n}{2y_n}\\
+\epsilon_{n+1}&=y_{n+1}-\sqrt{x}\\\\
+&=\frac{1}{2}\left(y_n+\frac{x}{y_n}\right)-\sqrt{x}\\\\
+&=\frac{y_n^2+(y_n-e_n)^2}{2y_n}-(y_n-\epsilon_n)\\\\
+&=\frac{2y_n^2-2y_n\epsilon_n+\epsilon_n^2-2y_n^2+2y_n\epsilon_n}{2y_n}\\\\
 &=\frac{\epsilon_n^2}{2y_n}
 \end{align*}
 $$
@@ -363,8 +363,8 @@ Whether \\(\epsilon_0\\) is negative or positive, \\(\epsilon_n\\) is positive f
 The error after \\(n\\) iterations can be estimated as:
 $$
 \begin{align*}
-\epsilon_n&=\frac{1}{2}\frac{\epsilon_n^2}{\epsilon_n+\sqrt{x}}\\
-&\approx \frac{\epsilon_n^2}{2\sqrt{x}}&\text{for }\epsilon_n\text{ small compared to }\sqrt{x}\\
+\epsilon_n&=\frac{1}{2}\frac{\epsilon_n^2}{\epsilon_n+\sqrt{x}}\\\\
+&\approx \frac{\epsilon_n^2}{2\sqrt{x}}&\text{for }\epsilon_n\text{ small compared to }\sqrt{x}\\\\
 \end{align*}
 $$
 
@@ -385,7 +385,7 @@ Since \\(f\\) must be in normalized form there are two cases for computing the e
 The two cases can be combined since \\(c_8\\) is 1 in the first case and 0 in the second:
 $$
 \begin{align*}
-\hat{c}&=2\hat{d}-c_8\\
+\hat{c}&=2\hat{d}-c_8\\\\
 \hat{f}&=2^{c_8}\hat{g}^2.
 \end{align*}
 $$
@@ -393,7 +393,7 @@ $$
 For the square root \\(\hat{d}\\) and \\(\hat{g}\\) are needed.
 $$
 \begin{align*}
-\hat{d}&=\frac{\hat{c}+c_8}{2}\\
+\hat{d}&=\frac{\hat{c}+c_8}{2}\\\\
 d&=\frac{c+c_8}{2}+64\\
 \hat{g}&=\sqrt{2^{-c_8}\hat{f}}.
 \end{align*}
@@ -540,8 +540,15 @@ Since `COMMON` is normalized, the first bit of the fraction is 1. If `AC[9] = 1`
        ARS 1                                                           MISRT1016
        STO COMMON+1                                                    MISRT1017
 ```
-Shifting `AC` right by 1 halves the characteristic and makes `AC[P]=0` again. The characteristic is now $$\frac{c+c_8}{2}=d-64.$$ Since the characteristic is even, a 0 is shifted into the fraction and the fraction is halved to 
-$$\frac{\hat{f}-\frac{c_8}{2}}{2}.$$ This value is stored in `COMMON+1`.
+Shifting `AC` right by 1 halves the characteristic and makes `AC[P]=0` again. The characteristic is now 
+$$
+\frac{c+c_8}{2}=d-64.
+$$
+Since the characteristic is even, a 0 is shifted into the fraction and the fraction is halved to 
+$$
+\frac{\hat{f}-\frac{c_8}{2}}{2}.
+$$
+This value is stored in `COMMON+1`.
 ```
 COMMON+1
  x  | S | QP | CHAR     | FRACTION
@@ -561,9 +568,9 @@ The computation of \\(d\\) is almost complete, but the fraction \\(\hat{g}=\sqrt
 $$
 \begin{align*}
 \hat{g}_0&=\sqrt{\frac{2^{-c_8}\hat{f}}{2}}+\left(\hat{f}-\frac{1}{2}\right)\left(\sqrt{2^{-c_8}\hat{f}}-\sqrt{\frac{2^{-c_8}f}{2}}\right)\\
-&=\sqrt{2^{-c_8}}\left(\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1\right)\\
+&=\sqrt{2^{-c_8}}\left(\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1\right)\\\\
 &=\begin{cases}
-\left(\sqrt{2}-1\right)\hat{f}+1-\frac{\sqrt{2}}{2}&\text{for odd exponents }\\
+\left(\sqrt{2}-1\right)\hat{f}+1-\frac{\sqrt{2}}{2}&\text{for odd exponents }\\\\
 \left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1&\text{for even exponents }.
 \end{cases}
 \end{align*}
@@ -572,7 +579,7 @@ Both cases involve a floating point multiplication (17 cycles) and addition (7 c
 $$
 \hat{g}_0=
 \begin{cases}
-\frac{7}{16}\hat{f} + \frac{9}{32}&\text{odd exponent}\\
+\frac{7}{16}\hat{f} + \frac{9}{32}&\text{odd exponent}\\\\
 \frac{9}{16}\hat{f}+\frac{7}{16}&\text{even exponent}.
 \end{cases}
 $$
@@ -676,9 +683,15 @@ where `SQRT+35` is:
 .99 | 0 | 00 | 00000000 | 000 001 111 111 111 111 111 111 111
 ```
 Since `F[1] = 1`, a fraction of `0F[2-27]` is \\(\hat{f}-1/2\\). Here the `F[2-27]` has been shifted right by 4, which would give
-$$\frac{\hat{f}}{16}-\frac{1}{32},$$ which is the fraction for the even case. 
+$$
+\frac{\hat{f}}{16}-\frac{1}{32},
+$$ 
+which is the fraction for the even case. 
 
-For the odd case, subtract this from \\((2^{22}-1)2^{-27}=\frac{1}{32}+2^{-27}\\) to get $$-\frac{\hat{f}}{16}+\frac{1}{16}-2^{-27}.$$
+For the odd case, subtract this from \\((2^{22}-1)2^{-27}=\frac{1}{32}+2^{-27}\\) to get 
+$$
+-\frac{\hat{f}}{16}+\frac{1}{16}-2^{-27}.
+$$
 
 ---
 
@@ -693,7 +706,7 @@ $$
 In the even case,
 $$
 \begin{align*}
-\left(\frac{\hat{f}}{2}-\frac{c_8}{4}\right)+\left(\frac{\hat{f}}{16}-\frac{1}{32}\right)&=\frac{9}{16}\hat{f}-\frac{1}{32}&c_8=0,\\
+\left(\frac{\hat{f}}{2}-\frac{c_8}{4}\right)+\left(\frac{\hat{f}}{16}-\frac{1}{32}\right)&=\frac{9}{16}\hat{f}-\frac{1}{32}&c_8=0,\\\\
 \left(\frac{\hat{f}}{2}-\frac{c_8}{4}\right)+\left(-\frac{\hat{f}}{16}+\frac{1}{16}-2^{-27}\right)&=\frac{7}{16}\hat{f}-\frac{3}{16}-2^{-27}&c_8=1.
 \end{align*}
 $$
@@ -724,7 +737,7 @@ S | CHAR     | FRACTION
 The characteristic is 64, the amount still needed to add to the characteristic to get \\(d\\). The fraction is \\(15/32+2^{-27}\\). Adding to the previous fraction gives:
 $$
 \begin{align*}
-\frac{9}{16}\hat{f}-\frac{1}{32}+\frac{15}{32}+2^{-27}&=\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}&c_8=0,\\
+\frac{9}{16}\hat{f}-\frac{1}{32}+\frac{15}{32}+2^{-27}&=\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}&c_8=0,\\\\
 \frac{7}{16}\hat{f}-\frac{3}{16}-2^{-27}+\frac{15}{32}+2^{-27}&=\frac{7}{16}\hat{f}+\frac{9}{32}&c_8=1.
 \end{align*}
 $$
@@ -761,7 +774,7 @@ COMMON+1
 The linear approximation will be less than \\(\sqrt{2^{-c_8}\hat{f}}\\) between \\(\frac{1}{2}\\) and 1, so the error \\(\epsilon_0\\) will be:
 $$
 \begin{align*}
-\epsilon_0&=\sqrt{2^{-c_8}\hat{f}}-\sqrt{2^{-c_8}}\left(\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1\right)\\
+\epsilon_0&=\sqrt{2^{-c_8}\hat{f}}-\sqrt{2^{-c_8}}\left(\left(2-\sqrt{2}\right)\hat{f}+\sqrt{2}-1\right)\\\\
 &=\sqrt{2^{-c_8}}\left(\sqrt{\hat{f}}-\left(2-\sqrt{2}\right)\hat{f}-\sqrt{2}+1\right).
 \end{align*}
 $$
@@ -774,8 +787,8 @@ giving a maximum error of about \\(\epsilon_0=.0126\\) when the exponent is odd.
 Two applications of Heron's methods with \\(\epsilon_0=.0126\\) at \\(x=.729\\) give:
 $$
 \begin{align*}
-\epsilon_n&\approx \epsilon_0 \left(\frac{\epsilon_0}{2\sqrt{x}}\right)^{2^n}\\
-&\approx 3.73\times 10^{-11}\\
+\epsilon_n&\approx \epsilon_0 \left(\frac{\epsilon_0}{2\sqrt{x}}\right)^{2^n}\\\\
+&\approx 3.73\times 10^{-11}\\\\
 &\approx 2^{-34.6}.
 \end{align*}
 $$
@@ -844,20 +857,20 @@ In the next step the first approximation, `COMMON+1`, and the division result, `
 In the even case to prevent a change in exponent, ensure that \\(\frac{1}{2}\le\frac{\hat{f}}{\hat{g}_0}<1\\). For the lower bound,
 $$
 \begin{align*}
-\frac{1}{2}&\le\frac{\hat{f}}{\hat{g}_0}\\
-\frac{1}{2}&\le \frac{\hat{f}}{\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}}\\
-\frac{9}{32}\hat{f}+\frac{7}{32}+2^{-28}&\le\hat{f}\\
-\frac{7}{32}+2^{-28}&\le\frac{23}{32}\hat{f}\\
+\frac{1}{2}&\le\frac{\hat{f}}{\hat{g}_0}\\\\
+\frac{1}{2}&\le \frac{\hat{f}}{\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}}\\\\
+\frac{9}{32}\hat{f}+\frac{7}{32}+2^{-28}&\le\hat{f}\\\\
+\frac{7}{32}+2^{-28}&\le\frac{23}{32}\hat{f}\\\\
 \frac{7+2^{-23}}{23}<\frac{1}{2}&\le\hat{f}.
 \end{align*}
 $$
 For the upper bound,
 $$
 \begin{align*}
-\frac{\hat{f}}{\hat{g}_0}&<1\\
-\frac{\hat{f}}{\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}}&<1\\
-\hat{f}&<\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}\\
-\frac{7}{16}\hat{f}<\frac{7}{16}+2^{-27}\\
+\frac{\hat{f}}{\hat{g}_0}&<1\\\\
+\frac{\hat{f}}{\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}}&<1\\\\
+\hat{f}&<\frac{9}{16}\hat{f}+\frac{7}{16}+2^{-27}\\\\
+\frac{7}{16}\hat{f}<\frac{7}{16}+2^{-27}\\\\
 \hat{f}<1 < 1+\frac{2^{-24}}{7}.
 \end{align*}
 $$
@@ -866,18 +879,18 @@ In the odd case, to ensure the exponent is increased by 1, ensure that \\(1\le\f
 For the lower bound,
 $$
 \begin{align*}
-1&\le\frac{\hat{f}}{\frac{7}{16}\hat{f}+\frac{9}{32}}\\
-\frac{7}{16}\hat{f}+\frac{9}{32}&\le\hat{f}\\
-\frac{9}{32}\le\frac{9}{16}\hat{f}\\
+1&\le\frac{\hat{f}}{\frac{7}{16}\hat{f}+\frac{9}{32}}\\\\
+\frac{7}{16}\hat{f}+\frac{9}{32}&\le\hat{f}\\\\
+\frac{9}{32}\le\frac{9}{16}\hat{f}\\\\
 \frac{1}{2}\le\hat{f}.
 \end{align*}
 $$
 For the upper bound,
 $$
 \begin{align*}
-\frac{\hat{f}}{\frac{7}{16}\hat{f}+\frac{9}{32}}&<2\\
-\hat{f}<\frac{7}{8}\hat{f}+\frac{9}{16}\\
-\frac{\hat{f}}{8}<\frac{9}{16}\\
+\frac{\hat{f}}{\frac{7}{16}\hat{f}+\frac{9}{32}}&<2\\\\
+\hat{f}<\frac{7}{8}\hat{f}+\frac{9}{16}\\\\
+\frac{\hat{f}}{8}<\frac{9}{16}\\\\
 \hat{f}<1<\frac{9}{2}.
 \end{align*}
 $$
