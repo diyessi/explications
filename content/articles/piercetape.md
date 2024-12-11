@@ -8,36 +8,159 @@ math: true
 
 Before IBM made computers they were a major provider of electromechanical punched card data processing equipment. The construction and use of this equipment influenced early computer hardware and software. Input and output were performed by slightly modified or reconfigured punched card equipment. Since computers could run significantly faster than punched card equipment, faster magnetic tape drives were developed that could store data more compactly. Humans put data on punched cards and the contents of the cards were transferred to magnetic tape. Most of those tapes long gone, but Paul Pierce's Computer Collection[^PaulPierce] contains the raw data from a number of tapes. Here we describe how to understand the raw data from early IBM computer tapes on Paul Pierce's site.
 
-# The tape
+# The tapes
 
-For years media depicted computers as a collection of punched card equipment, spinning tapes on drives, blinking lights and printers. Today, many people would not recognize the depictions as a computer. Paul Pierce includes photographs of the recovered tape reels on his site:
+For years media depicted computers as a collection of punched card equipment, spinning tapes on drives, blinking lights and printers. Today, many people would not recognize these depictions as a computer.
+
+Paul Pierce includes photographs of the tape reels he recovered on his site:
 
 ![Tape](https://piercefuller.com/library/p0002133.full.jpg)
-The tape reel is about 11" in diameter. Tape is 1/2" wide and up to 2400' long. The amount of data that could be stored on a tape depended on the record size. One tape could hold as much data as 11,000 punched cards.[^IBM704] Converted to bytes, this is the less impressive 4MB, but massive compared to the maximum sized 144K of memory.
+
+A tape reel is about 11" in diameter. Tape is 1/2" wide and up to 2400' long.
+
+In the mid-1950s, one tape could hold as much data as 11,000 punched cards.[^IBM704] Converted to bytes, this is the less impressive 4MB, but it is much more than other forms of storage at the time. For example, an IBM 704 had at most 144K of core memory and 18.5K of drum storage.
 
 To mount the tape on a tape drive, the white rim is removed by unsnapping the black fastener shown at the bottom of the picture, exposing the tape. The reel is attached to the left side of a drive, unwound a bit and run past the heads and wound onto an empty take-up reel on the right:
 
 ![Tape drive](https://upload.wikimedia.org/wikipedia/commons/3/3b/IBM_729_restored.jpg)  
 [__Tape drive__](https://commons.wikimedia.org/wiki/File:IBM_729_restored.jpg)
 
-In later tape drives the drive the tape only had to be mounted on the left and the drive would handle the rest.
-
-In the early days, one tape held on tape file. As data always expands to fill the available storage, the format was later extended to support multi-volume files.
-
 # Format of the recovered tape files
 
-Data was written on the tape 7 bits at a time and grouped into records. The recovered data uses one byte for each seven bits written, setting the high bit to indicate the start of a record.
+Files as we think of them today first appeared in the early 1960s, about a decade after magnetic tape began being used for storing data. A tape file was a precursor to the later files. Each tape holds one tape file. Data can only be written or read while the tape is continuously moving past the tape heads. A program that used tape broke the tape file up into a number of records separated by *inter-record gaps*, which were blank sections of tape long enough that the tape could be started and then restarted, giving the computer time to prepare the next record or process the record it had just read. After the last record of a tape file is written, an end of file marker is written. During reading, the end of file marker tells the program that there are no more records on the tape.
+
+The recovered tapes have seven tracks. As the tape moves past the tape heads, bits are periodically written, seven at a time. At the end of a record, all zeros are written. There are no timing markers on the tape. During reads, if any of the seven heads reads a 1, the values from all seven heads are assumed to contain valid data. As a result, at least one bit of the seven in each write must be 1.
+
+The recovered files are in a format called `P7B`, where the low 7 bits of each byte contains the 7 bit value read from tape. The inter-record gaps are not in the recovered files. Instead, the high bit of the first byte of each record is 1. The last byte of the file is the tape's end of file marker. The largest file is less than 11MB.
+
+|P7B |7  |6     |5  |4  |3  |2  |1  |0  |
+|:--:|:-:|:----:|:-:|:-:|:-:|:-:|:-:|:-:|
+|    |BOR|Parity| 5 | 4 | 3 | 2 | 1 | 0 |
+
 
 For example, for the tape shown above, the `adc00037.data` starts as:
 ```
-E3 0A 50 65 71 50 0A 41 41 0A 50 50 50 50... C0 40 40 40 40 40...
+      0: E30A506571 500A41410A 5050505050 5050505050
+     20: 0A0A0A4150 5050505050 5050507239 5050505050
+     40: 5050505050 5050505050 5050505050 5050505050
+     60: 5050505050 5050505050 5050505050 5050505050
+     80: C040404040 4010106440 4040084004 4004400840
+    100: 4040404040 4040404040 4040404040 4040404040
+    120: 4040404040 4040404040 4040404040 4040404040
+    140: 4040404040 4062402001 4040404040 4040404040
+    160: 4040404040 4040404040 4040404040 4040404040
+    180: 4040404040 4040404040 4040404040 4040404040
+    200: 4040404040 4040404040 4040404040 4040404040
+    220: 4040404040 4040404040 4040404040 4040404040
+    240: 546140611F 374A671061 4F37404040 4040404040
+    260: 4040404046 4008406854 3810296B08 4654401020
+    280: 3D195D7070 015B5E4040 4040404040 4040404040
+    300: 0858020843 105734621F 2331134040 100B133420
+    320: 0702584940 1040404040 4040404040 4040204040
+    340: 2C203E2A61 4A08640201 0231074913 794A312F0B
+    360: 4040404040 4040404040 404054400B 703B4A5B0B
+    380: 0B7A513210 1064400840 0440044008 4004404040
+                              .
+                              .
+                              .
+9761260: 5050505050 5050505050 5050505050 5050505050
+9761280: 508F
 ```
-In `E3`, the high bit is set, indicating the beginning of a record. If we use `[` and `]` to group records, the 7 bit values are:
+In the first byte, location `0`, the value `E3` has the high bit is set, indicating the beginning of a record. The next record starts at location `80` where the byte is `C0`. The last byte, `8F`, also indicates the beginning of a record, in this case the end of file mark.
+
+If we remove the high bit that indicates the start of a record and separate the records we have:
 ```
-[63 0A 50 65 71 50 0A 41 41 0A 50 50 50...][40 40 40 40 40 40...]
+BOR
+      0: 630A506571 500A41410A 5050505050 5050505050
+     20: 0A0A0A4150 5050505050 5050507239 5050505050
+     40: 5050505050 5050505050 5050505050 5050505050
+     60: 5050505050 5050505050 5050505050 5050505050
+EOR even/odd parity: 80/0 record length: 80
+BOR
+     80: 4040404040 4010106440 4040084004 4004400840
+    100: 4040404040 4040404040 4040404040 4040404040
+    120: 4040404040 4040404040 4040404040 4040404040
+    140: 4040404040 4062402001 4040404040 4040404040
+    160: 4040404040 4040404040 4040404040 4040404040
+    180: 4040404040 4040404040 4040404040 4040404040
+    200: 4040404040 4040404040 4040404040 4040404040
+    220: 4040404040 4040404040 4040404040 4040404040
+    240: 546140611F 374A671061 4F37404040 4040404040
+    260: 4040404046 4008406854 3810296B08 4654401020
+    280: 3D195D7070 015B5E4040 4040404040 4040404040
+    300: 0858020843 105734621F 2331134040 100B133420
+    320: 0702584940 1040404040 4040404040 4040204040
+    340: 2C203E2A61 4A08640201 0231074913 794A312F0B
+    360: 4040404040 4040404040 404054400B 703B4A5B0B
+    380: 0B7A513210 1064400840 0440044008 4004404040
+                              .
+                              .
+                              .
+   1620: 6140494020 0110081010 4040404040 4040406140
+   1640: 6440100120 2040401001 2010544020 1061404940
+   1660: 2010202010 1064400840 0440044008 4040014040
+EOR even/odd parity: 0/1600 record length: 1600
+                              .
+                              .
+                              .
+9761261: 5050505050 5050505050 5050505050 5050505050
+EOR even/odd parity: 1360/0 record length: 1360
+BOR
+EOF 9761281
 ```
 
-If you are familiar with ASCII hex codes, the values look ASCII-like, but this is just coincidence. ASCII didn't exist when the tape was written. Text was encoded in a family of formats called *BCD*, which was based on punched cards, the predominant form of IBM data storage when tape was introduced.
+Notice that each byte in the first record has even parity and each byte in the second record has odd parity. There are two record formats, binary and BCD. Binary uses odd parity while BCD uses even parity.[^IBM704]
+
+## Brief history of the tape format
+
+MIT, UNIVAC and IBM were all experimenting with magnetic tape for data storage and data transfer in the early 1950s.
+
+### Whirlind
+
+In 1951, MIT Whirlwind adapted a specially designed Raytheon 6 track half inch magnetic tape drive. Analysis of recording failures showed that data loss was usually caused by dust and uneven coatings of magnetic material on the tape. In both cases, regions smaller than the size of two adjacent tracks were not magnetized. These drop-outs were rare, so to avoid drop-outs tracks were paired such that every pair had two other tracks between the pair, i.e. 0-3, 1-4 and 2-5 were paired. During writes, the same value was written to each tack of the pair. During reads, the pair values were ORed. Pair 0-3 was used as a timing track, while pairs 1-4 and 2-5 held data. Each write was called a *line*, and there were about 100 lines/inch. Data was written one *frame* at a time, a frame being 8 lines or 16 bits, the Whirlwind word size.[^WhirlwindTape1951] Individual words could be written, or a sequence of words could be written using a block transfer.[^WhirlwindTrainingMaterial]
+
+### UNIVAC UNISERVO
+
+In 1951 UNIVAC introduced the first commercial tape system, UNISERVO. The metal tape was 1200 feet by a half inch on an 8" reel that together weighed about 25 pounds. A tape could hold about 1.5MB, which is about 16 bytes per inch. The transfer rate was about 9.6KB/s. A UNISERVO tape had 7 tracks, 6 for data and one for odd parity. Data was stored as a sequence of 60 word records, where each word was 72 bits. The UNIVAC I supported up to 9 UNISERVO tape drives and had a 60 word buffer for use with tape.[^UNIVACUniservo]
+
+Tape instructions were:
+- Read the next block on a tape into the buffer. The tape is positioned at the end of the block.
+- Read the previous block on a tape into the buffer. The tape is positioned at the beginning of the block.
+- Transfer the entire tape buffer to a block of memory and optionally start a forward or backward read. There is an alignment requirement for the starting memory address.
+- Fill the entire tape buffer from a block of memory.
+- Write the buffer as the next block on a tape, making any data that followed the initial tape position inaccessible.
+- Write the buffer at low density as the next block on a tape. Low density was used with off-line tape equipment.
+- Rewind the tape, optionally unmounting the tape. If unmounted, the tape cannot be accessed without physically remounting it.[^UNIVACFactronic] [^UNIVACIBasicProgramming] [^UNIVACIIBasicProgramming]
+
+### IBM
+
+IBM's development of magnetic tape storage at the physical level is reported in [^IBMMagneticTape]. We can piece together the two record formats by following the chronology of the first IBM processors that supported magnetic tape.
+
+The IBM 701, a *scientific* computer designed for numeric computing, was the first IBM computer to support magnetic tape. The 701 could only read and write 36 bit values on tape, broken into 6 6-bit values with parity, starting with the high 6 bits. For each 6 bits, all values from `0x00` through `0x3F` need to be supported, so odd parity was used to ensure at least one bit was always 1.[^IBM701]
+
+The IBM 702 followed. It was a *commercial* computer and worked with six bit BCD characters. BCD was a simple transformation of the sparse 12 bit encoding used on punched cards. In the Hollerith character encoding for punched cards, at most one of the zone rows `12`, `11` and `0` can be punched, at most one of the digit rows `1` through `7` and `9` can be punched, and digit row `8` can be punched. The zone rows determine the high two bits: `00` for no punch, `01` for row `0`, `10` for row `11` and `11` for row 12.  The low four bits come from ORing the binary values of the digits. Finally, `0x00` (no punch) and `0x10` (`0` punch) are swapped so digit-only punches correspond to `0x00` through `0x0F`. IBM wanted to distinguish binary data from BCD data on tape, so they used even parity for BCD. Since the BCD encoding for the `0` character was `0x00`, on tape `0x00` was written as `0x0A`, which was not assigned a character. When reading tape, `0x0A`s are converted back to `0x00`.[^IBM702]
+
+The IBM 704 was the next scientific computer and supported both binary and character data in the same format as the 701 and 702. For BCD character data, one change was made: If bit `0x10` was set, bit `0x20` was complemented. This had the effect of putting the alphabet in alphabetic order. Thus, there are three variants of BCD: the BCD used on the 702 that is a simple transformation of the holes in column, the BCD used on tape where `0x00` is moved to `0x0A`, and the BCD used on the 704. [^IBM704](pages 30-37)
+
+In IBM's defense, no one had any prior experience at this time, so mistakes had to be corrected.
+
+As if three ways to represent a BCD value was not bad enough, the assignment of characters to BCD values varied from site to site and over time. The digits, uppercase letters and blank were always assigned the same values, but there was variation by site and over time in how symbols were associated with BCD values. For business programmers, business-related symbols would be in use on key punches and printers, and they would need to remember that what printed as a `$` served as a `(` in their program. For some symbols, the IBM 704 SAP assembler accepts several BCD values corresponding to the more common BCD values assigned to the symbol. If a program on a tape looks strange, it can be because different symbol mappings are needed.
+
+## Two record formats
+
+Data storage on magnetic tape was a new technology. MIT, Univac and IBM each developed their own formats, although industry would switch to IBM's format. IBM originally developed magnetic tape storage for their 701 computers, which were primarily used for scientific computation. The 701 had a 36 bit word. Each word was written to tape as 6 6-bit words in high to low order in the word. A seventh parity bit was added for detecting errors. By using odd parity, they ensured that the seven bit value `0000000` would never be written to tape.
+
+IBM developed the 702 computer for business data processing. The 702 was character-based, using a 6 bit character in a BCD encoding. In order to distinguish the binary data of the 701 computer on tape from the character data of the 702, the 702 used even parity and relocated the character `0` from `000000` to `001010`. The 704 supported binary data in the same format as the 701, as well as BCD character data packed 6 characters to a 36 bit word. When starting a record read or write, the program had to specify whether to use BCD mode or binary mode.
+
+In the first record above, all bytes have even parity, so the record is character data in a BCD format. In the second record, all bytes have odd parity, so the record is binary data.
+
+## BCD Formats
+
+A BCD encoding can represent up to 63 characters in one of three forms:
+1) Hollerith encoding. Possible values are `0x00` through `0x09` and `0x0B` through `0x3F`.
+2) Tape encoding. Possible values are `0x01` through `0x3F`.
+3) CPU (704) encoding. Possible values are `0x01` through `0x3F`.
+
 
 # Punched cards
 
@@ -408,35 +531,6 @@ A tape application did not always know how many records would be on the tape. In
 
 The `tar` file is a remnant of the days when tape was used for transferring files. `tar` stands for *tape archive* and creates a file containing the names and contents of many files into a single file that can be put on tape, or creates the files with the names and contents in such a file.
 
-## Whirlind
-
-Whirlwind adapted a specially designed Raytheon 6 track half inch magnetic tape drive. While others found ways to make vacuum tubes last longer when used in a computer, the Whirlwind group determined what was causing the vacuum tubes to fail and found ways to make better vacuum tubes. Likewise, the group analyzed what caused data loss on tape and determined dust and uneven coatings of magnetic material on the tape were the problem. Both caused small regions of the tape to not be magnetized. The regions were smaller than the size of two adjacent tracks, so tracks were paired such that every pair had two other tracks between the pair, i.e. 0-3, 1-4 and 2-5. Tape drop-outs were rare and two drop-outs in the same line were extremely rare, so if either head in the pair detected a change in the magnetic field it was assumed to be real. For this to work, there needed to be no magnetic field between lines, since, otherwise, a drop-out would be seen as a change in the field from some value to 0. Lines were marked using the pair 0-3, which was written for every line. Two bits of data were stored using the pairs 1-3 and 2-5. A frame was 8 lines, or 16 bits, the word size. Records had one frame. Unlike may later tape formats, records not at the end of the tape file could be modified in place.[^WhirlwindTape1951]
-
-Block mark is first line of a block, recorded automatically.
-6.3.1 1000' x .5" 100 lines/inch
-6.3.1.2 6 digit binary character code recorded serially, 4 lines. First line is just index mark. 4 index pulses (0 for rest?) stops printing.
-
-The 0-3 pair was used as a timing marker and the other two pairs were used for data. Each three bit write was called a line. The density for lines was about 100 lines per inch, which is about 25 bytes/inch. Tape traveled at 30 inches per second, giving a transfer rate of 750B/s. Tape could be read/written in either direction but needed to be read in the same direction it was written. There are 12 msec of blank tape at the start of a record, followed by a block marker and then a sequence of 16 bit words. Words in a block could be read or written individually or as a block transfer, but the reads or writes needed to be able to keep up with the speed of the tape[^WhirlwindTrainingMaterial].
-
-## UNIVAC UNISERVO
-
-A UNISERVO tape had 7 tracks, 6 for data and one for odd parity. Data was stored as a sequence of 60 word records, where each word was 72 bits. The UNIVAC I supported up to 9 UNISERVO tape drives and had a 60 word buffer for use with tape.[^UNIVACUniservo]
-Tape instructions were:
-- Read the next block on a tape into the buffer. The tape is positioned at the end of the block.
-- Read the previous block on a tape into the buffer. The tape is positioned at the beginning of the block.
-- Transfer the entire tape buffer to a block of memory and optionally start a forward or backward read. There is an alignment requirement for the starting memory address.
-- Fill the entire tape buffer from a block of memory.
-- Write the buffer as the next block on a tape, making any data that followed the initial tape position inaccessible.
-- Write the buffer at low density as the next block on a tape. Low density was used with off-line tape equipment.
-- Rewind the tape, optionally unmounting the tape. If unmounted, the tape cannot be accessed without physically remounting it.[^UNIVACFactronic] [^UNIVACIBasicProgramming] [^UNIVACIIBasicProgramming]
-
-## Univac
-
-In 1951 UNIVAC introduced the first commercial tape system, UNISERVO. The metal tape was 1200 feet by a half inch on an 8" reel that together weighed about 25 pounds. A tape could hold about 1.5MB, which is about 16 bytes per inch. The transfer rate was about 9.6KB/s. Today, one 4"x4"x.85" LTO 9 cartridge costs about $140, holds 18TB on a 3400 foot half inch tape, which averages about 440MB/inch. Data is transferred at 400MB/s.
-
-Tape was introduced as an input/output medium with throughput closer to the speeds of the computers at the time than equipment based on punched cards and paper tape. Cards could be transferred to tape off-line and tapes could be printed off-line while the computer was kept busy with other tasks. Tape was also used to transfer data between sites, and, once standardized, between different types of computers. For many years, tape also served as a cheaper extension to the limited expensive memory found on a computer. In the first several decades of computing, knowing how to use tape was a necessary part of programming. In media, computers were depicted with flashing lights, punched cards, printers and spinning tapes. Today tape is mainly used for backing up and archiving data and most current programmers have never even seen tape, let alone know how it was used.
-
-Although tape is no longer used in most programs, it still influences programming. Files are stored on random access devices but are treated as though they are a linear sequence of bytes. When random access devices such as drums and disks were first introduced, they did not have file systems. Programs accessed fixed-size blocks of data by its physical location on the disk or drum and performant programs took advantage of the geometry to minimize latency. Tape had files. It was only later that file systems were added so disks and drums could conveniently cache frequently used tape files. Originally operating systems supported a variety of file types. In Multics, a file was used by mapping its contents to memory. It was UNIX that treated everything as linear sequences of bytes, just like tape.
 
 ## IBM
 
@@ -628,6 +722,8 @@ A tape held far more data than could fit in the memory of a computer. A way was 
 [^IBM704]: [IBM 704 electronic data-processing machine manual of operation](https://bitsavers.org/pdf/ibm/704/24-6661-2_704_Manual_1955.pdf)
 
 [^IBMTapeUnits]: [Reference Manual: IBM Magnetic Tape Units (1961)](https://bitsavers.org/pdf/ibm/magtape/A22-6589-1_magTapeReference_Jun62.pdf).
+
+[^IBMMagneticTape]: [W. S. Buslik, "IBM Magnetic Tape Reader and Recorder," in Managing Requirements Knowledge, International Workshop on, NEW YORK CITY, 1952, pp. 86, doi: 10.1109/AFIPS.1952.9.](https://doi.ieeecomputersociety.org/10.1109/AFIPS.1952.9)
 
 [^Ledley1960]: Ledley, Robert Steven, *Digital Computer and Control Engineering*, McGraw-Hill Book Company, Inc., 1960.
 
